@@ -1,0 +1,87 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Shopee Seller Tool</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+<div class="d-flex">
+
+<div class="sidebar p-3">
+
+<h4>LOTUS ENGINEER v1</h4>
+
+<ul class="nav flex-column">
+
+<li class="nav-item"><a class="nav-link text-white" onclick="show('dashboard')">Dashboard</a></li>
+<li class="nav-item"><a class="nav-link text-white" onclick="show('cli')">CLI</a></li>
+<li class="nav-item"><a class="nav-link text-white" onclick="show('products')">Products</a></li>
+<li class="nav-item"><a class="nav-link text-white" onclick="show('orders')">Orders</a></li>
+
+</ul>
+
+</div>
+
+<div class="main p-4">
+
+<div id="dashboard">
+
+<h2>Dashboard</h2>
+
+<div class="row">
+
+<div class="col-md-4"><div class="card"><div class="card-body"><h5>API Calls</h5><h3 id="calls">0</h3></div></div></div>
+<div class="col-md-4"><div class="card"><div class="card-body"><h5>Products</h5><h3 id="productsCount">0</h3></div></div></div>
+<div class="col-md-4"><div class="card"><div class="card-body"><h5>Orders</h5><h3 id="ordersCount">0</h3></div></div></div>
+
+</div>
+
+</div>
+
+<div id="cli" style="display:none">
+
+<h3>CLI Terminal</h3>
+
+<div class="terminal">
+
+<div id="output"></div>
+<input id="cmd" placeholder="Enter command">
+
+</div>
+
+</div>
+
+<div id="products" style="display:none">
+
+<h3>Products</h3>
+
+<button class="btn btn-primary" onclick="loadProducts()">Load Products</button>
+
+<pre id="productResult"></pre>
+
+</div>
+
+<div id="orders" style="display:none">
+
+<h3>Orders</h3>
+
+<button class="btn btn-primary" onclick="loadOrders()">Load Orders</button>
+
+<pre id="orderResult"></pre>
+
+</div>
+
+</div>
+
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script src="dashboard.js"></script>
+
+</body>
+</html>
