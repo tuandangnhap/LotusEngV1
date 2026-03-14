@@ -208,7 +208,8 @@ async function getItemList() {
         `&access_token=${access_token}` +
         `&shop_id=${shop_id_global}` +
         `&sign=${sign}` +
-        `&offset=0&page_size=20`
+        `&offset=0&page_size=20` +
+        `&item_status=NORMAL`
 
     const response = await axios.get(url)
 
