@@ -49,6 +49,7 @@
 
 <h2>Shopee CLI Tool</h2>
 <button id="downloadItems">Download list item</button>
+<input type="file" id="jsonFile" style="display:none" accept=".json">
 
 <div id="terminal"></div>
 
@@ -84,6 +85,26 @@
         a.click()
 
     }
+    document.getElementById("jsonFile").onchange = async function(){
+
+        const file = this.files[0]
+
+        const form = new FormData()
+
+        form.append("file",file)
+
+        log("Processing items...")
+
+        const res = await fetch("/get_item_base",{
+            method:"POST",
+            body:form
+        })
+
+        const data = await res.json()
+
+        log(JSON.stringify(data,null,2))
+
+    }
 
     cmd.addEventListener("keydown",async(e)=>{
 
@@ -109,6 +130,13 @@
                 const data = await res.json()
 
                 log(JSON.stringify(data,null,2))
+
+            }
+            else if(command==="get_item_base"){
+
+                log("Upload JSON file containing item_id list...")
+
+                document.getElementById("jsonFile").click()
 
             }
 

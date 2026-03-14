@@ -11,6 +11,11 @@ const partner_id = "2030813"
 const partner_key = "shpk7749796d78616e62715758437a626468595a646d6948734a547254537056"
 const redirect_url = "https://lotusengv1.onrender.com/callback"
 
+const multer = require("multer")
+const fs = require("fs")
+
+const upload = multer({ dest: "uploads/" })
+
 let access_token = ""
 let shop_id = ""
 
@@ -113,6 +118,70 @@ app.get("/get_items", async (req, res) => {
     }
 
     res.json(item_ids)
+
+})
+
+app.post("/get_item_base", upload.single("file"), async (req, res) => {
+
+    try{
+
+        const raw = fs.readFileSync(req.file.path)
+        const item_ids = JSON.parse(raw)
+
+        const path = "/api/v2/product/get_item_base_info"
+
+        let result_items = []
+
+        for(const item_id of item_ids){
+
+            const timestamp = Math.floor(Date.now()/1000)
+
+            const base = partner_id + path + timestamp + access_token + shop_id
+
+            const sign = crypto
+                .createHmac("sha256", partner_key)
+                .update(base)
+                .digest("hex")
+
+            const result = await axios.get(
+                `https://partner.shopeemobile.com${path}`,
+                {
+                    params:{
+                        partner_id,
+                        shop_id,
+                        access_token,
+                        timestamp,
+                        sign,
+                        item_id_list:item_id
+                    }
+                }
+            )
+
+            const item = result.data.response.item_list[0]
+
+            if(!item) continue
+
+            result_items.push({
+
+                item_id:item.item_id,
+
+                item_name:item.item_name,
+
+                images:item.image?.image_url_list || [],
+
+                video_url:item.video_info?.[0]?.video_url || ""
+
+            })
+
+        }
+
+        res.json(result_items)
+
+    }catch(e){
+
+        res.json({error:e.message})
+
+    }
 
 })
 
