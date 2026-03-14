@@ -11,6 +11,7 @@ const orderRoutes = require("./routes/orders")
 const app = express()
 const server = http.createServer(app)
 const io = new Server(server)
+const crypto = require("crypto")
 
 app.use(bodyParser.json())
 app.use(express.urlencoded({ extended: true }))
@@ -20,6 +21,32 @@ app.use(session({
     resave: false,
     saveUninitialized: true
 }))
+
+app.get("/connect", (req, res) => {
+
+    const partner_id = process.env.PARTNER_ID
+    const partner_key = process.env.PARTNER_KEY
+    const redirect = "https://lotusengv1.onrender.com/callback"
+
+    const timestamp = Math.floor(Date.now()/1000)
+    const path = "/api/v2/shop/auth_partner"
+
+    const base = `${partner_id}${path}${timestamp}`
+
+    const sign = crypto
+        .createHmac("sha256", partner_key)
+        .update(base)
+        .digest("hex")
+
+    const url =
+        `https://partner.shopeemobile.com${path}` +
+        `?partner_id=${partner_id}` +
+        `&timestamp=${timestamp}` +
+        `&sign=${sign}` +
+        `&redirect=${redirect}`
+
+    res.redirect(url)
+})
 
 app.use(express.static("public"))
 
