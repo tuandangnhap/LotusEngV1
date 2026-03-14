@@ -69,9 +69,10 @@ app.get("/callback", async (req, res) => {
 app.get("/get_items", async (req, res) => {
 
     const path = "/api/v2/product/get_item_list"
+
     let offset = 0
     const page_size = 100
-    let allItems = []
+    let item_ids = []
 
     while (true) {
 
@@ -102,17 +103,16 @@ app.get("/get_items", async (req, res) => {
 
         const data = result.data.response
 
-        allItems.push(...data.item)
+        data.item.forEach(i => {
+            item_ids.push(String(i.item_id))
+        })
 
         if (!data.has_next_page) break
 
         offset = data.next_offset
     }
 
-    res.json({
-        total: allItems.length,
-        items: allItems
-    })
+    res.json(item_ids)
 
 })
 

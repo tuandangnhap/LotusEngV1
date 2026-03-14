@@ -30,6 +30,16 @@
             font-family:monospace;
             font-size:16px;
         }
+        #downloadItems{
+            position:fixed;
+            top:10px;
+            right:10px;
+            background:#111;
+            color:#0f0;
+            border:1px solid #0f0;
+            padding:8px 12px;
+            cursor:pointer;
+        }
 
     </style>
 
@@ -51,6 +61,27 @@
     function log(text){
         terminal.innerHTML += "<pre>> " + text + "</pre>"
         terminal.scrollTop = terminal.scrollHeight
+    }
+    document.getElementById("downloadItems").onclick = async () => {
+
+        const res = await fetch("/get_items")
+
+        const data = await res.json()
+
+        const blob = new Blob(
+            [JSON.stringify(data,null,2)],
+            { type:"application/json" }
+        )
+
+        const url = URL.createObjectURL(blob)
+
+        const a = document.createElement("a")
+
+        a.href = url
+        a.download = "item_list.json"
+
+        a.click()
+
     }
 
     cmd.addEventListener("keydown",async(e)=>{
@@ -93,7 +124,7 @@
     })
 
 </script>
-
+<button id="downloadItems">Download list item</button>
 </body>
 
 </html>
