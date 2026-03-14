@@ -23,29 +23,38 @@ app.use(session({
 }))
 
 app.get("/connect", (req, res) => {
+    try {
 
-    const partner_id = process.env.PARTNER_ID
-    const partner_key = process.env.PARTNER_KEY
-    const redirect = "https://lotusengv1.onrender.com/callback"
+        const crypto = require("crypto")
 
-    const timestamp = Math.floor(Date.now()/1000)
-    const path = "/api/v2/shop/auth_partner"
+        const partner_id = 2030813
+        const partner_key = "shpk7749796d78616e62715758437a626468595a646d6948734a547254537056"
 
-    const base = `${partner_id}${path}${timestamp}`
+        const redirect = "https://lotusengv1.onrender.com/callback"
 
-    const sign = crypto
-        .createHmac("sha256", partner_key)
-        .update(base)
-        .digest("hex")
+        const timestamp = Math.floor(Date.now() / 1000)
+        const path = "/api/v2/shop/auth_partner"
 
-    const url =
-        `https://partner.shopeemobile.com${path}` +
-        `?partner_id=${partner_id}` +
-        `&timestamp=${timestamp}` +
-        `&sign=${sign}` +
-        `&redirect=${redirect}`
+        const base = `${partner_id}${path}${timestamp}`
 
-    res.redirect(url)
+        const sign = crypto
+            .createHmac("sha256", partner_key)
+            .update(base)
+            .digest("hex")
+
+        const url =
+            `https://partner.shopeemobile.com${path}` +
+            `?partner_id=${partner_id}` +
+            `&timestamp=${timestamp}` +
+            `&sign=${sign}` +
+            `&redirect=${redirect}`
+
+        res.redirect(url)
+
+    } catch (err) {
+        console.log("CONNECT ERROR:", err)
+        res.status(500).send(err.message)
+    }
 })
 
 app.use(express.static("public"))
