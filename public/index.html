@@ -17,7 +17,9 @@
 <h4>LOTUS ENGINEER v1</h4>
 
 <ul class="nav flex-column">
-
+    <li class="nav-item">
+        <a class="nav-link text-white" onclick="connectShop()">Connect Shop</a>
+    </li>
 <li class="nav-item"><a class="nav-link text-white" onclick="show('dashboard')">Dashboard</a></li>
 <li class="nav-item"><a class="nav-link text-white" onclick="show('cli')">CLI</a></li>
 <li class="nav-item"><a class="nav-link text-white" onclick="show('products')">Products</a></li>
@@ -71,6 +73,7 @@
 <h3>Orders</h3>
 
 <button class="btn btn-primary" onclick="loadOrders()">Load Orders</button>
+
 
 <pre id="orderResult"></pre>
 

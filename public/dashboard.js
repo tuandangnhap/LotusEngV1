@@ -59,3 +59,13 @@ const data = await res.json()
 document.getElementById("orderResult").textContent = JSON.stringify(data,null,2)
 
 }
+
+async function connectShop(){
+
+    const res = await fetch("/connect")
+
+    const data = await res.json()
+
+    window.location.href = data.url
+
+}
