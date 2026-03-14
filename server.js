@@ -62,7 +62,7 @@ app.get("/callback", async (req, res) => {
 
     access_token = result.data.access_token
 
-    res.send("Shop connected. You can close this tab.")
+    res.redirect("/")
 
 })
 
