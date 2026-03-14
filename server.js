@@ -73,6 +73,23 @@ io.on("connection", (socket) => {
 
 })
 
+/* ===== SHOPEE CALLBACK ===== */
+
+app.get("/callback", (req, res) => {
+
+    const code = req.query.code
+    const shop_id = req.query.shop_id
+
+    console.log("Shopee callback:", code, shop_id)
+
+    res.send(`
+        <h2>Shop Connected</h2>
+        <p>Shop ID: ${shop_id}</p>
+        <p>Code: ${code}</p>
+    `)
+
+})
+
 server.listen(3000, () => {
 
     console.log("Shopee Seller Tool running on http://localhost:3000")
