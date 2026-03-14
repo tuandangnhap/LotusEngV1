@@ -17,6 +17,8 @@
         #terminal{
             height:500px;
             overflow:auto;
+            white-space:pre-wrap;
+            font-family:monospace;
         }
 
         input{
@@ -47,7 +49,7 @@
     const cmd = document.getElementById("cmd")
 
     function log(text){
-        terminal.innerHTML += "<div>> "+text+"</div>"
+        terminal.innerHTML += "<pre>> " + text + "</pre>"
         terminal.scrollTop = terminal.scrollHeight
     }
 
