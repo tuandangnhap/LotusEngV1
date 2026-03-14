@@ -62,7 +62,7 @@ document.getElementById("orderResult").textContent = JSON.stringify(data,null,2)
 
 async function connectShop(){
 
-    const res = await fetch("/connect")
+    const res =  window.location.href = "/connect"
 
     const data = await res.json()
 
