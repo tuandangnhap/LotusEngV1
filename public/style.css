@@ -1,9 +1,0 @@
-
-body{background:#f4f6f9;font-family:Arial}
-.sidebar{width:220px;height:100vh;background:#1f2d3d;color:white}
-.nav-link{cursor:pointer}
-.nav-link:hover{background:#2c3e50}
-.main{flex:1}
-.terminal{background:black;color:#00ff00;height:400px;padding:10px;display:flex;flex-direction:column}
-#output{flex:1;overflow:auto;white-space:pre-wrap}
-#cmd{background:black;border:none;color:#00ff00}
