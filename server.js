@@ -69,32 +69,50 @@ app.get("/callback", async (req, res) => {
 app.get("/get_items", async (req, res) => {
 
     const path = "/api/v2/product/get_item_list"
-    const timestamp = Math.floor(Date.now() / 1000)
+    let offset = 0
+    const page_size = 100
+    let allItems = []
 
-    const base = partner_id + path + timestamp + access_token + shop_id
+    while (true) {
 
-    const signature = crypto
-        .createHmac("sha256", partner_key)
-        .update(base)
-        .digest("hex")
+        const timestamp = Math.floor(Date.now() / 1000)
 
-    const result = await axios.get(
-        `https://partner.shopeemobile.com${path}`,
-        {
-            params: {
-                partner_id,
-                shop_id,
-                access_token,
-                timestamp,
-                sign: signature,
-                offset: 0,
-                page_size: 10,
-                item_status: "NORMAL"
+        const base = partner_id + path + timestamp + access_token + shop_id
+
+        const signature = crypto
+            .createHmac("sha256", partner_key)
+            .update(base)
+            .digest("hex")
+
+        const result = await axios.get(
+            `https://partner.shopeemobile.com${path}`,
+            {
+                params: {
+                    partner_id,
+                    shop_id,
+                    access_token,
+                    timestamp,
+                    sign: signature,
+                    offset,
+                    page_size,
+                    item_status: "NORMAL"
+                }
             }
-        }
-    )
+        )
 
-    res.json(result.data)
+        const data = result.data.response
+
+        allItems.push(...data.item)
+
+        if (!data.has_next_page) break
+
+        offset = data.next_offset
+    }
+
+    res.json({
+        total: allItems.length,
+        items: allItems
+    })
 
 })
 
