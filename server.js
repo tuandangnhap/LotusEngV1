@@ -127,7 +127,6 @@ app.get("/download_media", async (req, res) => {
         const cache = JSON.parse(fs.readFileSync("cache.json"))
         const items = Object.values(cache)
 
-        // ===== CHỐNG TIMEOUT =====
         req.setTimeout(0)
         res.setTimeout(0)
 
@@ -135,23 +134,57 @@ app.get("/download_media", async (req, res) => {
         res.setHeader("Content-Disposition", "attachment; filename=media.zip")
         res.setHeader("Connection", "keep-alive")
         res.setHeader("Transfer-Encoding", "chunked")
+        res.setHeader("X-Accel-Buffering", "no")
 
         const archive = archiver("zip", {
-            zlib: { level: 1 } // 👈 giảm CPU cho ổn định
+            zlib: { level: 1 }
         })
 
         archive.pipe(res)
 
-        // ===== DEBUG =====
         archive.on("error", err => {
             console.log("ZIP ERROR:", err)
         })
 
-        res.on("close", () => {
-            console.log("Client closed connection")
+        // ====== BUILD TASK LIST ======
+        const tasks = []
+
+        items.forEach(item => {
+            const folder = item.item_name.replace(/[\\/:*?"<>|]/g, "_")
+
+            // note
+            tasks.push({
+                type: "text",
+                data: item.item_name,
+                name: `${folder}/note.txt`
+            })
+
+            // images
+            item.images.forEach((url, i) => {
+                tasks.push({
+                    type: "file",
+                    url,
+                    name: `${folder}/image_${i + 1}.jpg`
+                })
+            })
+
+            // video
+            if (item.video_url) {
+                tasks.push({
+                    type: "file",
+                    url: item.video_url,
+                    name: `${folder}/video.mp4`
+                })
+            }
         })
 
-        // ===== RETRY HELPER =====
+        // ====== PROGRESS ======
+        progress.total = tasks.length
+        progress.done = 0
+
+        console.log("TOTAL FILES:", tasks.length)
+
+        // ====== DOWNLOAD FUNCTION ======
         async function downloadStream(url, retries = 3) {
             for (let i = 0; i < retries; i++) {
                 try {
@@ -159,62 +192,63 @@ app.get("/download_media", async (req, res) => {
                         url,
                         method: "GET",
                         responseType: "stream",
-                        timeout: 60000
+                        timeout: 60000,
+                        maxContentLength: Infinity,
+                        maxBodyLength: Infinity
                     })
                 } catch (e) {
-                    console.log("Retry:", url)
                     if (i === retries - 1) throw e
                 }
             }
         }
 
-        // ===== LOOP =====
-        for (const item of items) {
+        // ====== CONCURRENCY LIMIT ======
+        async function runParallel(tasks, limit = 5) {
+            let index = 0
 
-            const folder = item.item_name.replace(/[\\/:*?"<>|]/g, "_")
+            async function worker() {
+                while (index < tasks.length) {
+                    const i = index++
+                    const task = tasks[i]
 
-            // note
-            archive.append(item.item_name, {
-                name: `${folder}/note.txt`
-            })
+                    try {
+                        if (task.type === "text") {
+                            archive.append(task.data, { name: task.name })
+                        } else {
+                            const res = await downloadStream(task.url)
 
-            // ===== IMAGES =====
-            for (let i = 0; i < item.images.length; i++) {
-                const url = item.images[i]
+                            const stream = res.data
 
-                try {
-                    const response = await downloadStream(url)
+                            stream.on("error", err => {
+                                console.log("STREAM ERROR:", err.message)
+                            })
 
-                    archive.append(response.data, {
-                        name: `${folder}/image_${i + 1}.jpg`
-                    })
+                            archive.append(stream, {
+                                name: task.name
+                            })
+                        }
 
-                    console.log("IMG OK:", url)
+                    } catch (e) {
+                        console.log("FAIL:", task.url || task.name)
+                    }
 
-                } catch (e) {
-                    console.log("IMG FAIL:", url)
+                    progress.done++
                 }
             }
 
-            // ===== VIDEO =====
-            if (item.video_url) {
-                try {
-                    const response = await downloadStream(item.video_url, 2)
-
-                    archive.append(response.data, {
-                        name: `${folder}/video.mp4`
-                    })
-
-                    console.log("VIDEO OK")
-
-                } catch (e) {
-                    console.log("VIDEO FAIL:", item.video_url)
-                }
+            const workers = []
+            for (let i = 0; i < limit; i++) {
+                workers.push(worker())
             }
+
+            await Promise.all(workers)
         }
 
-        // ===== DONE =====
+        // ⚡ chạy song song
+        await runParallel(tasks, 5)
+
         await archive.finalize()
+
         console.log("ZIP DONE")
 
     } catch (e) {

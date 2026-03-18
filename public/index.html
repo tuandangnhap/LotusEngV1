@@ -115,7 +115,6 @@
 <body>
 
 <h2>Shopee CLI Tool</h2>
-<h2>Shopee CLI Tool</h2>
 
 <!-- 👇 thêm dòng này -->
 <div id="terminal"></div>
@@ -176,16 +175,18 @@
 
         log("Starting download...")
 
-        progressBox.style.display = "block"
+        progressFill.style.width = "0%"
+        progressText.innerText = "Progress: 0%"
 
-        const eventSource = new EventSource("/progress")
+        if (eventSource) eventSource.close()
+
+        eventSource = new EventSource("/progress")
 
         eventSource.onmessage = function(event) {
 
             const percent = parseInt(event.data)
 
             progressText.innerText = "Progress: " + percent + "%"
-
             progressFill.style.width = percent + "%"
 
             if (percent >= 100) {
