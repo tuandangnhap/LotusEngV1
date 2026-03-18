@@ -171,34 +171,40 @@
         a.click()
 
     }
-    document.getElementById("downloadMedia").onclick = () => {
+    document.getElementById("downloadMedia").onclick = async () => {
 
-        log("Starting download...")
+        log("Start multi-part download...")
 
-        progressFill.style.width = "0%"
-        progressText.innerText = "Progress: 0%"
+        let part = 0
 
-        if (eventSource) eventSource.close()
+        while (true) {
 
-        eventSource = new EventSource("/progress")
+            log("Downloading part " + part)
 
-        eventSource.onmessage = function(event) {
+            const res = await fetch(`/download_media_part?part=${part}`)
 
-            const percent = parseInt(event.data)
+            const contentType = res.headers.get("content-type")
 
-            progressText.innerText = "Progress: " + percent + "%"
-            progressFill.style.width = percent + "%"
-
-            if (percent >= 100) {
-                progressText.innerText = "Done ✅"
-                eventSource.close()
+            // nếu backend trả JSON => hết file
+            if (contentType.includes("application/json")) {
+                log("All parts done ✅")
+                break
             }
-        }
 
-        const a = document.createElement("a")
-        a.href = "/download_media"
-        a.download = "media.zip"
-        a.click()
+            const blob = await res.blob()
+
+            const url = URL.createObjectURL(blob)
+
+            const a = document.createElement("a")
+            a.href = url
+            a.download = `media_part_${part}.zip`
+            a.click()
+
+            part++
+
+            // delay tránh lag
+            await new Promise(r => setTimeout(r, 500))
+        }
     }
     document.getElementById("jsonFile").onchange = async function(){
 

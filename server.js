@@ -302,6 +302,82 @@ app.get("/download_media", async (req, res) => {
     }
 })
 
+app.get("/download_media_part", async (req, res) => {
+
+    try {
+
+        const part = parseInt(req.query.part) || 0
+        const size = 200 // số file mỗi part
+
+        const cache = JSON.parse(fs.readFileSync("cache.json"))
+        const items = Object.values(cache)
+
+        // ===== BUILD TASK =====
+        const tasks = []
+
+        items.forEach(item => {
+
+            const folder = item.item_name.replace(/[\\/:*?"<>|]/g, "_")
+
+            item.images.forEach((url, i) => {
+                tasks.push({
+                    url,
+                    name: `${folder}/image_${i + 1}.jpg`
+                })
+            })
+
+            if (item.video_url) {
+                tasks.push({
+                    url: item.video_url,
+                    name: `${folder}/video.mp4`
+                })
+            }
+
+        })
+
+        // ===== CHIA PART =====
+        const chunks = []
+        for (let i = 0; i < tasks.length; i += size) {
+            chunks.push(tasks.slice(i, i + size))
+        }
+
+        const current = chunks[part]
+
+        if (!current) {
+            return res.json({ done: true })
+        }
+
+        // ===== STREAM ZIP =====
+        res.setHeader("Content-Type", "application/zip")
+        res.setHeader("Content-Disposition", `attachment; filename=media_part_${part}.zip`)
+
+        const archive = archiver("zip", { zlib: { level: 1 } })
+        archive.pipe(res)
+
+        for (const task of current) {
+
+            try {
+                const response = await axios({
+                    url: task.url,
+                    method: "GET",
+                    responseType: "stream"
+                })
+
+                archive.append(response.data, { name: task.name })
+
+            } catch (e) {
+                console.log("FAIL:", task.url)
+            }
+        }
+
+        await archive.finalize()
+
+    } catch (e) {
+        console.log(e)
+        res.end()
+    }
+})
+
 app.get("/progress", (req, res) => {
 
     res.setHeader("Content-Type", "text/event-stream")
