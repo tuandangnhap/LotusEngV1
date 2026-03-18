@@ -44,9 +44,42 @@
             margin-top:10px;
         }
 
+
+
+        #bottomPanel{
+            position:fixed;
+            bottom:0;
+            left:0;
+            width:100%;
+            background:#0c0c0c;
+            padding:10px;
+            border-top:1px solid #0f0;
+        }
+
+        /* terminal không bị che */
+        #terminal{
+            height:calc(100vh - 160px);
+        }
+
+        /* nút */
+        #actions{
+            display:flex;
+            gap:10px;
+            margin-bottom:10px;
+        }
+
+        #actions button{
+            background:#111;
+            color:#0f0;
+            border:1px solid #0f0;
+            padding:6px 10px;
+            cursor:pointer;
+        }
+
+        /* progress */
         #progressBox{
-            margin-top:10px;
             display:none;
+            margin-bottom:10px;
         }
 
         #progressBar{
@@ -62,6 +95,16 @@
             background:#0f0;
         }
 
+        /* input */
+        #cmd{
+            width:100%;
+            background:#000;
+            color:#0f0;
+            border:none;
+            outline:none;
+            font-family:monospace;
+        }
+
     </style>
 
 </head>
@@ -69,21 +112,23 @@
 <body>
 
 <h2>Shopee CLI Tool</h2>
-<div id="actions">
-    <button id="downloadItems">Download list item</button>
-    <button id="downloadMedia">Download Video Image</button>
-</div>
-<input type="file" id="jsonFile" style="display:none" accept=".json">
+<div id="bottomPanel">
 
-<div id="terminal"></div>
-<div id="progressBox">
-    <div id="progressText">Progress: 0%</div>
-    <div id="progressBar">
-        <div id="progressFill"></div>
+    <div id="actions">
+        <button id="downloadItems">Download list item</button>
+        <button id="downloadMedia">Download Video Image</button>
     </div>
-</div>
 
-<input id="cmd" autofocus placeholder="type command...">
+    <div id="progressBox">
+        <div id="progressText">Progress: 0%</div>
+        <div id="progressBar">
+            <div id="progressFill"></div>
+        </div>
+    </div>
+
+    <input id="cmd" autofocus placeholder="type command...">
+
+</div>
 
 <script>
 
@@ -93,7 +138,7 @@
     const progressBox = document.getElementById("progressBox")
     const progressText = document.getElementById("progressText")
     const progressFill = document.getElementById("progressFill")
-
+    progressBox.style.display = "block"
     function log(text){
         terminal.innerHTML += "<pre>> " + text + "</pre>"
         terminal.scrollTop = terminal.scrollHeight
