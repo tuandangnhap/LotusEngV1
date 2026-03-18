@@ -49,6 +49,7 @@
 
 <h2>Shopee CLI Tool</h2>
 <button id="downloadItems">Download list item</button>
+<button id="downloadMedia">Download Video Image</button>
 <input type="file" id="jsonFile" style="display:none" accept=".json">
 
 <div id="terminal"></div>
@@ -57,6 +58,7 @@
 
 <script>
 
+    let eventSource = null
     const terminal = document.getElementById("terminal")
     const cmd = document.getElementById("cmd")
 
@@ -84,6 +86,29 @@
 
         a.click()
 
+    }
+    document.getElementById("downloadMedia").onclick = () => {
+
+        log("Starting download...")
+
+        // 👉 mở progress stream
+        eventSource = new EventSource("/progress")
+
+        eventSource.onmessage = function(event) {
+            const percent = event.data
+            log("Progress: " + percent + "%")
+
+            if (percent >= 100) {
+                log("Download completed!")
+                eventSource.close()
+            }
+        }
+
+        // 👉 trigger download
+        const a = document.createElement("a")
+        a.href = "/download_media"
+        a.download = "media.zip"
+        a.click()
     }
     document.getElementById("jsonFile").onchange = async function(){
 

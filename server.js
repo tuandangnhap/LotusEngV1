@@ -7,6 +7,7 @@ const fs = require("fs")
 
 const app = express()
 const PORT = 3000
+const archiver = require("archiver")
 
 const partner_id = "2030813"
 const partner_key = "shpk7749796d78616e62715758437a626468595a646d6948734a547254537056"
@@ -16,6 +17,10 @@ const upload = multer({ dest: "uploads/" })
 
 let access_token = ""
 let shop_id = ""
+let progress = {
+    total: 0,
+    done: 0
+}
 
 app.use(express.static("public"))
 
@@ -110,6 +115,97 @@ app.get("/callback", async (req, res) => {
     access_token = result.data.access_token
 
     res.redirect("/")
+})
+
+app.get("/download_media", async (req, res) => {
+    try {
+
+        if (!fs.existsSync("cache.json")) {
+            return res.json({ error: "No data" })
+        }
+
+        const cache = JSON.parse(fs.readFileSync("cache.json"))
+        const items = Object.values(cache)
+
+        // 👉 tính total file
+        progress.total = 0
+        progress.done = 0
+
+        items.forEach(item => {
+            progress.total += item.images.length
+            if (item.video_url) progress.total += 1
+        })
+
+        res.setHeader("Content-Type", "application/zip")
+        res.setHeader("Content-Disposition", "attachment; filename=media.zip")
+
+        const archive = archiver("zip", { zlib: { level: 9 } })
+        archive.pipe(res)
+
+        const axiosInstance = axios.create({ responseType: "arraybuffer" })
+
+        for (const item of items) {
+
+            const folder = item.item_name.replace(/[\\/:*?"<>|]/g, "_")
+
+            archive.append(item.item_name, { name: `${folder}/note.txt` })
+
+            // ===== IMAGES =====
+            for (let i = 0; i < item.images.length; i++) {
+                try {
+                    const img = await axiosInstance.get(item.images[i])
+
+                    archive.append(img.data, {
+                        name: `${folder}/image_${i + 1}.jpg`
+                    })
+
+                } catch (e) {}
+
+                progress.done++   // 🔥 update
+            }
+
+            // ===== VIDEO =====
+            if (item.video_url) {
+                try {
+                    const video = await axiosInstance.get(item.video_url)
+
+                    archive.append(video.data, {
+                        name: `${folder}/video.mp4`
+                    })
+
+                } catch (e) {}
+
+                progress.done++   // 🔥 update
+            }
+        }
+
+        await archive.finalize()
+
+    } catch (e) {
+        res.json({ error: e.message })
+    }
+})
+
+app.get("/progress", (req, res) => {
+
+    res.setHeader("Content-Type", "text/event-stream")
+    res.setHeader("Cache-Control", "no-cache")
+    res.setHeader("Connection", "keep-alive")
+
+    const interval = setInterval(() => {
+
+        const percent = progress.total === 0
+            ? 0
+            : Math.floor((progress.done / progress.total) * 100)
+
+        res.write(`data: ${percent}\n\n`)
+
+        if (percent >= 100) {
+            clearInterval(interval)
+            res.end()
+        }
+
+    }, 500)
 })
 
 /* ================== GET ITEM LIST ================== */
