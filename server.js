@@ -302,17 +302,36 @@ app.get("/download_media", async (req, res) => {
     }
 })
 
+app.get("/total_parts", (req, res) => {
+
+    const cache = JSON.parse(fs.readFileSync("cache.json"))
+    const items = Object.values(cache)
+
+    const tasks = []
+
+    items.forEach(item => {
+
+        item.images.forEach(url => tasks.push(url))
+        if (item.video_url) tasks.push(item.video_url)
+
+    })
+
+    const size = 200 // mỗi part ~200 file
+    const total = Math.ceil(tasks.length / size)
+
+    res.json({ total })
+})
+
 app.get("/download_media_part", async (req, res) => {
 
     try {
 
         const part = parseInt(req.query.part) || 0
-        const size = 200 // số file mỗi part
+        const size = 200
 
         const cache = JSON.parse(fs.readFileSync("cache.json"))
         const items = Object.values(cache)
 
-        // ===== BUILD TASK =====
         const tasks = []
 
         items.forEach(item => {
@@ -332,22 +351,16 @@ app.get("/download_media_part", async (req, res) => {
                     name: `${folder}/video.mp4`
                 })
             }
-
         })
 
-        // ===== CHIA PART =====
-        const chunks = []
-        for (let i = 0; i < tasks.length; i += size) {
-            chunks.push(tasks.slice(i, i + size))
-        }
+        const start = part * size
+        const end = start + size
+        const current = tasks.slice(start, end)
 
-        const current = chunks[part]
-
-        if (!current) {
+        if (current.length === 0) {
             return res.json({ done: true })
         }
 
-        // ===== STREAM ZIP =====
         res.setHeader("Content-Type", "application/zip")
         res.setHeader("Content-Disposition", `attachment; filename=media_part_${part}.zip`)
 
@@ -360,7 +373,8 @@ app.get("/download_media_part", async (req, res) => {
                 const response = await axios({
                     url: task.url,
                     method: "GET",
-                    responseType: "stream"
+                    responseType: "stream",
+                    timeout: 30000
                 })
 
                 archive.append(response.data, { name: task.name })

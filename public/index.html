@@ -171,40 +171,100 @@
         a.click()
 
     }
+    let isDownloading = false
+
     document.getElementById("downloadMedia").onclick = async () => {
 
-        log("Start multi-part download...")
+        if (isDownloading) {
+            log("Already downloading...")
+            return
+        }
 
-        let part = 0
+        isDownloading = true
 
-        while (true) {
+        try {
 
-            log("Downloading part " + part)
+            log("Getting total parts...")
 
-            const res = await fetch(`/download_media_part?part=${part}`)
+            const totalRes = await fetch("/total_parts")
+            const { total } = await totalRes.json()
 
-            const contentType = res.headers.get("content-type")
+            log("Total parts: " + total)
 
-            // nếu backend trả JSON => hết file
-            if (contentType.includes("application/json")) {
-                log("All parts done ✅")
-                break
+            progressBox.style.display = "flex"
+
+            let current = 0
+            const MAX_PARALLEL = 3
+
+            async function downloadPart(part) {
+
+                for (let retry = 0; retry < 3; retry++) {
+
+                    try {
+
+                        log("Downloading part " + part)
+
+                        const res = await fetch(`/download_media_part?part=${part}`)
+
+                        const contentType = res.headers.get("content-type") || ""
+
+                        if (contentType.includes("application/json")) {
+                            return false
+                        }
+
+                        const blob = await res.blob()
+
+                        const a = document.createElement("a")
+                        a.href = URL.createObjectURL(blob)
+                        a.download = `media_part_${part}.zip`
+
+                        document.body.appendChild(a)
+                        a.click()
+                        a.remove()
+
+                        current++
+
+                        const percent = Math.floor((current / total) * 100)
+                        progressText.innerText = `Progress: ${percent}% (${current}/${total})`
+                        progressFill.style.width = percent + "%"
+
+                        return true
+
+                    } catch (e) {
+
+                        log(`Retry part ${part} (${retry + 1})`)
+
+                        await new Promise(r => setTimeout(r, 1000))
+                    }
+                }
+
+                log("Fail part " + part)
+                return false
             }
 
-            const blob = await res.blob()
+            let part = 0
 
-            const url = URL.createObjectURL(blob)
+            while (part < total) {
 
-            const a = document.createElement("a")
-            a.href = url
-            a.download = `media_part_${part}.zip`
-            a.click()
+                const jobs = []
 
-            part++
+                for (let i = 0; i < MAX_PARALLEL && part < total; i++) {
+                    jobs.push(downloadPart(part++))
+                }
 
-            // delay tránh lag
-            await new Promise(r => setTimeout(r, 500))
+                await Promise.all(jobs)
+            }
+
+            progressText.innerText = "Done ✅"
+            log("ALL DONE 🔥")
+
+        } catch (e) {
+
+            log("Error: " + e.message)
+
         }
+
+        isDownloading = false
     }
     document.getElementById("jsonFile").onchange = async function(){
 
