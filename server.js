@@ -214,25 +214,69 @@ app.get("/download_media", async (req, res) => {
                     try {
                         if (task.type === "text") {
                             archive.append(task.data, { name: task.name })
+                            progress.done++
                         } else {
                             const res = await downloadStream(task.url)
-
                             const stream = res.data
 
-                            stream.on("error", err => {
-                                console.log("STREAM ERROR:", err.message)
-                            })
+                            await new Promise((resolve) => {
 
-                            archive.append(stream, {
-                                name: task.name
+                                stream.on("end", () => {
+                                    progress.done++
+                                    resolve()
+                                })
+
+                                stream.on("error", () => {
+                                    progress.done++
+                                    resolve()
+                                })
+
+                                archive.append(stream, {
+                                    name: task.name
+                                })
                             })
                         }
 
                     } catch (e) {
                         console.log("FAIL:", task.url || task.name)
+                        progress.done++
                     }
+                }
+            }async function worker() {
+                while (index < tasks.length) {
+                    const i = index++
+                    const task = tasks[i]
 
-                    progress.done++
+                    try {
+                        if (task.type === "text") {
+                            archive.append(task.data, { name: task.name })
+                            progress.done++
+                        } else {
+                            const res = await downloadStream(task.url)
+                            const stream = res.data
+
+                            await new Promise((resolve) => {
+
+                                stream.on("end", () => {
+                                    progress.done++
+                                    resolve()
+                                })
+
+                                stream.on("error", () => {
+                                    progress.done++
+                                    resolve()
+                                })
+
+                                archive.append(stream, {
+                                    name: task.name
+                                })
+                            })
+                        }
+
+                    } catch (e) {
+                        console.log("FAIL:", task.url || task.name)
+                        progress.done++
+                    }
                 }
             }
 
@@ -247,9 +291,10 @@ app.get("/download_media", async (req, res) => {
         // ⚡ chạy song song
         await runParallel(tasks, 5)
 
-        await archive.finalize()
+        // 👇 đợi stream flush hết
+        await new Promise(r => setTimeout(r, 1000))
 
-        console.log("ZIP DONE")
+        await archive.finalize()
 
     } catch (e) {
         console.log("ERROR:", e.message)
