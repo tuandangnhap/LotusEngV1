@@ -202,10 +202,15 @@
 
                     try {
 
-                        log("Downloading part " + part)
+                        for (let part = 0; part < total; part++) {
 
-                        // 👇 mở tab → browser cho phép download
-                        window.open(`/download_media_part?part=${part}`)
+                            log("Downloading part " + part)
+
+                            window.open(`/download_media_part?part=${part}`)
+
+                            // 👇 CHỜ download start xong
+                            await new Promise(r => setTimeout(r, 3000))
+                        }
 
                         current++
 
