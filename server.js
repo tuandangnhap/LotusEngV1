@@ -127,62 +127,99 @@ app.get("/download_media", async (req, res) => {
         const cache = JSON.parse(fs.readFileSync("cache.json"))
         const items = Object.values(cache)
 
-        // 👉 tính total file
-        progress.total = 0
-        progress.done = 0
-
-        items.forEach(item => {
-            progress.total += item.images.length
-            if (item.video_url) progress.total += 1
-        })
+        // ===== CHỐNG TIMEOUT =====
+        req.setTimeout(0)
+        res.setTimeout(0)
 
         res.setHeader("Content-Type", "application/zip")
         res.setHeader("Content-Disposition", "attachment; filename=media.zip")
+        res.setHeader("Connection", "keep-alive")
+        res.setHeader("Transfer-Encoding", "chunked")
 
-        const archive = archiver("zip", { zlib: { level: 9 } })
+        const archive = archiver("zip", {
+            zlib: { level: 1 } // 👈 giảm CPU cho ổn định
+        })
+
         archive.pipe(res)
 
-        const axiosInstance = axios.create({ responseType: "arraybuffer" })
+        // ===== DEBUG =====
+        archive.on("error", err => {
+            console.log("ZIP ERROR:", err)
+        })
 
+        res.on("close", () => {
+            console.log("Client closed connection")
+        })
+
+        // ===== RETRY HELPER =====
+        async function downloadStream(url, retries = 3) {
+            for (let i = 0; i < retries; i++) {
+                try {
+                    return await axios({
+                        url,
+                        method: "GET",
+                        responseType: "stream",
+                        timeout: 60000
+                    })
+                } catch (e) {
+                    console.log("Retry:", url)
+                    if (i === retries - 1) throw e
+                }
+            }
+        }
+
+        // ===== LOOP =====
         for (const item of items) {
 
             const folder = item.item_name.replace(/[\\/:*?"<>|]/g, "_")
 
-            archive.append(item.item_name, { name: `${folder}/note.txt` })
+            // note
+            archive.append(item.item_name, {
+                name: `${folder}/note.txt`
+            })
 
             // ===== IMAGES =====
             for (let i = 0; i < item.images.length; i++) {
-                try {
-                    const img = await axiosInstance.get(item.images[i])
+                const url = item.images[i]
 
-                    archive.append(img.data, {
+                try {
+                    const response = await downloadStream(url)
+
+                    archive.append(response.data, {
                         name: `${folder}/image_${i + 1}.jpg`
                     })
 
-                } catch (e) {}
+                    console.log("IMG OK:", url)
 
-                progress.done++   // 🔥 update
+                } catch (e) {
+                    console.log("IMG FAIL:", url)
+                }
             }
 
             // ===== VIDEO =====
             if (item.video_url) {
                 try {
-                    const video = await axiosInstance.get(item.video_url)
+                    const response = await downloadStream(item.video_url, 2)
 
-                    archive.append(video.data, {
+                    archive.append(response.data, {
                         name: `${folder}/video.mp4`
                     })
 
-                } catch (e) {}
+                    console.log("VIDEO OK")
 
-                progress.done++   // 🔥 update
+                } catch (e) {
+                    console.log("VIDEO FAIL:", item.video_url)
+                }
             }
         }
 
+        // ===== DONE =====
         await archive.finalize()
+        console.log("ZIP DONE")
 
     } catch (e) {
-        res.json({ error: e.message })
+        console.log("ERROR:", e.message)
+        res.end()
     }
 })
 
