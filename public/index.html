@@ -171,89 +171,59 @@
         a.click()
 
     }
-    let isDownloading = false
+    let currentPart = 0
+    let totalParts = 0
+    let initialized = false
 
     document.getElementById("downloadMedia").onclick = async () => {
 
-        if (isDownloading) {
-            log("Already downloading...")
-            return
-        }
-
-        isDownloading = true
-
         try {
 
-            log("Getting total parts...")
+            // 👉 Lần đầu: lấy tổng part
+            if (!initialized) {
 
-            const totalRes = await fetch("/total_parts")
-            const { total } = await totalRes.json()
+                log("Getting total parts...")
 
-            log("Total parts: " + total)
+                const res = await fetch("/total_parts")
+                const data = await res.json()
 
-            progressBox.style.display = "flex"
+                totalParts = data.total
+                initialized = true
 
-            let current = 0
-            const MAX_PARALLEL = 3
-
-            async function downloadPart(part) {
-
-                for (let retry = 0; retry < 3; retry++) {
-
-                    try {
-
-                        for (let part = 0; part < total; part++) {
-
-                            log("Downloading part " + part)
-
-                            window.open(`/download_media_part?part=${part}`)
-
-                            // 👇 CHỜ download start xong
-                            await new Promise(r => setTimeout(r, 3000))
-                        }
-
-                        current++
-
-                        const percent = Math.floor((current / total) * 100)
-                        progressText.innerText = `Progress: ${percent}% (${current}/${total})`
-                        progressFill.style.width = percent + "%"
-
-                        return true
-
-                    } catch (e) {
-
-                        log(`Retry part ${part}`)
-                        await new Promise(r => setTimeout(r, 1000))
-                    }
-                }
-
-                log("Fail part " + part)
-                return false
+                log("Total parts: " + totalParts)
             }
 
-            let part = 0
-
-            while (part < total) {
-
-                const jobs = []
-
-                for (let i = 0; i < MAX_PARALLEL && part < total; i++) {
-                    jobs.push(downloadPart(part++))
-                }
-
-                await Promise.all(jobs)
+            // 👉 nếu đã hết
+            if (currentPart >= totalParts) {
+                log("All parts downloaded ✅")
+                return
             }
 
-            progressText.innerText = "Done ✅"
-            log("ALL DONE 🔥")
+            log(`Download part ${currentPart}`)
+
+            // 👉 trigger download
+            const a = document.createElement("a")
+            a.href = `/download_media_part?part=${currentPart}`
+            a.download = `media_part_${currentPart}.zip`
+
+            document.body.appendChild(a)
+            a.click()
+            a.remove()
+
+            currentPart++
+
+            // 👉 update progress
+            const percent = Math.floor((currentPart / totalParts) * 100)
+            progressText.innerText = `Progress: ${percent}% (${currentPart}/${totalParts})`
+            progressFill.style.width = percent + "%"
+
+            if (currentPart >= totalParts) {
+                log("DONE ALL 🎉")
+            }
 
         } catch (e) {
-
             log("Error: " + e.message)
-
         }
-
-        isDownloading = false
     }
     document.getElementById("jsonFile").onchange = async function(){
 
