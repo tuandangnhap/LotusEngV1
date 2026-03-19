@@ -224,18 +224,7 @@ app.get("/download_media", async (req, res) => {
                             } else {
                                 console.log("EMPTY:", task.url)
                             }
-                            // const stream = res.data
-                            // await new Promise((resolve) => {
-                            //
-                            //     stream.on("end", () => {
-                            //         progress.done++
-                            //         resolve()
-                            //     })
-                            //     stream.on("error", () => {
-                            //         progress.done++
-                            //         resolve()
-                            //     })
-                            // })
+                            progress.done++
                         }
 
                     } catch (e) {
@@ -254,12 +243,16 @@ app.get("/download_media", async (req, res) => {
         }
 
         // ⚡ chạy song song
-        await runParallel(tasks, 5)
+        await runParallel(tasks, 2)
 
         // 👇 đợi stream flush hết
         await new Promise(r => setTimeout(r, 1000))
 
         await archive.finalize()
+
+        archive.on("end", () => {
+            console.log("ZIP STREAM END")
+        })
 
     } catch (e) {
         console.log("ERROR:", e.message)
@@ -328,12 +321,14 @@ app.get("/download_media_part", async (req, res) => {
 
         res.setHeader("Content-Type", "application/zip")
         res.setHeader("Content-Disposition", `attachment; filename=media_part_${part}.zip`)
+        res.setHeader("Connection", "keep-alive")
+        res.setHeader("Transfer-Encoding", "chunked")
+        req.on("close", () => {
+            console.log("CLIENT CLOSED")
+        })
 
         const archive = archiver("zip", { zlib: { level: 1 } })
         archive.pipe(res)
-        archive.on("data", chunk => {
-            res.write(chunk)
-        })
 
         for (const item of currentItems) {
 
@@ -391,8 +386,13 @@ app.get("/download_media_part", async (req, res) => {
             }
         }
 
+        console.log("FINALIZING ZIP...")
         await archive.finalize()
+        console.log("ZIP DONE")
 
+        archive.on("end", () => {
+            console.log("ZIP STREAM END")
+        })
     } catch (e) {
         console.log(e)
         res.end()
