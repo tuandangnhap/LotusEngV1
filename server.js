@@ -368,9 +368,9 @@ app.get("/download_media_part", async (req, res) => {
 
         const start = part * size
         const end = start + size
-        const current = tasks.slice(start, end)
+        const currentItems = items.slice(start, end)
 
-        if (current.length === 0) {
+        if (currentItems.length === 0) {
             return res.json({ done: true })
         }
 
@@ -380,28 +380,51 @@ app.get("/download_media_part", async (req, res) => {
         const archive = archiver("zip", { zlib: { level: 1 } })
         archive.pipe(res)
 
-        for (const task of current) {
+        for (const item of currentItems) {
 
-            try {
+            const folder = item.item_name.replace(/[\\/:*?"<>|]/g, "_")
 
-                if (task.type === "text") {
+            // ===== NOTE =====
+            archive.append(String(item.item_id), { name: `${folder}/note_id.txt` })
+            archive.append(item.item_name, { name: `${folder}/note_name.txt` })
+            archive.append(item.description || "", { name: `${folder}/note_description.txt` })
 
-                    archive.append(task.data, { name: task.name })
-
-                } else {
-
+            // ===== IMAGE =====
+            for (let i = 0; i < item.images.length; i++) {
+                try {
                     const response = await axios({
-                        url: task.url,
+                        url: item.images[i],
                         method: "GET",
                         responseType: "stream",
                         timeout: 20000
                     })
 
-                    archive.append(response.data, { name: task.name })
-                }
+                    archive.append(response.data, {
+                        name: `${folder}/image_${i + 1}.jpg`
+                    })
 
-            } catch (e) {
-                console.log("FAIL:", task.url || task.name)
+                } catch (e) {
+                    console.log("FAIL IMAGE:", item.images[i])
+                }
+            }
+
+            // ===== VIDEO =====
+            if (item.video_url) {
+                try {
+                    const response = await axios({
+                        url: item.video_url,
+                        method: "GET",
+                        responseType: "stream",
+                        timeout: 20000
+                    })
+
+                    archive.append(response.data, {
+                        name: `${folder}/video.mp4`
+                    })
+
+                } catch (e) {
+                    console.log("FAIL VIDEO:", item.video_url)
+                }
             }
         }
 
