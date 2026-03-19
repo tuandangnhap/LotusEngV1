@@ -379,6 +379,9 @@ app.get("/download_media_part", async (req, res) => {
 
         const archive = archiver("zip", { zlib: { level: 1 } })
         archive.pipe(res)
+        archive.on("data", chunk => {
+            res.write(chunk)
+        })
 
         for (const item of currentItems) {
 
