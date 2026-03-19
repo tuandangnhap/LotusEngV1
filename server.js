@@ -150,31 +150,29 @@ app.get("/download_media", async (req, res) => {
         const tasks = []
 
         items.forEach(item => {
+
             const folder = item.item_name.replace(/[\\/:*?"<>|]/g, "_")
 
-            // note
-            // note id
+            // ===== NOTE FILES =====
             tasks.push({
                 type: "text",
                 data: String(item.item_id),
                 name: `${folder}/note_id.txt`
             })
 
-// note name
             tasks.push({
                 type: "text",
                 data: item.item_name,
                 name: `${folder}/note_name.txt`
             })
 
-// note description
             tasks.push({
                 type: "text",
-                data: (item.description || "").slice(0, 5000),
+                data: item.description || "",
                 name: `${folder}/note_description.txt`
             })
 
-            // images
+            // ===== IMAGES =====
             item.images.forEach((url, i) => {
                 tasks.push({
                     type: "file",
@@ -183,7 +181,7 @@ app.get("/download_media", async (req, res) => {
                 })
             })
 
-            // video
+            // ===== VIDEO =====
             if (item.video_url) {
                 tasks.push({
                     type: "file",
@@ -385,17 +383,25 @@ app.get("/download_media_part", async (req, res) => {
         for (const task of current) {
 
             try {
-                const response = await axios({
-                    url: task.url,
-                    method: "GET",
-                    responseType: "stream",
-                    timeout: 20000
-                })
 
-                archive.append(response.data, { name: task.name })
+                if (task.type === "text") {
+
+                    archive.append(task.data, { name: task.name })
+
+                } else {
+
+                    const response = await axios({
+                        url: task.url,
+                        method: "GET",
+                        responseType: "stream",
+                        timeout: 20000
+                    })
+
+                    archive.append(response.data, { name: task.name })
+                }
 
             } catch (e) {
-                console.log("FAIL:", task.url)
+                console.log("FAIL:", task.url || task.name)
             }
         }
 
@@ -483,7 +489,6 @@ app.post("/get_item_base", upload.single("file"), async (req, res) => {
         const item_ids = JSON.parse(raw)
 
         const path = "/api/v2/product/get_item_base_info"
-        const extraPath = "/api/v2/product/get_item_extra_info"
 
         // ===== CACHE =====
         let cache = {}
@@ -501,6 +506,8 @@ app.post("/get_item_base", upload.single("file"), async (req, res) => {
         const chunks = chunkArray(missing_ids, 50)
 
         let count = 0
+
+        const extraPath = "/api/v2/product/get_item_extra_info"
 
         const tasks = chunks.map(chunk => async () => {
             await sleep(200)
@@ -527,7 +534,7 @@ app.post("/get_item_base", upload.single("file"), async (req, res) => {
                     }
                 )
 
-                // ===== EXTRA INFO =====
+                // ===== EXTRA INFO (description) =====
                 const timestamp2 = Math.floor(Date.now() / 1000)
 
                 const base2 = partner_id + extraPath + timestamp2 + access_token + shop_id
@@ -550,7 +557,6 @@ app.post("/get_item_base", upload.single("file"), async (req, res) => {
                 const items = result.data.response.item_list || []
                 const extraItems = extra.data.response.item_list || []
 
-                // 👉 map description
                 const extraMap = {}
                 extraItems.forEach(i => {
                     extraMap[i.item_id] = i.description_info?.text || ""
