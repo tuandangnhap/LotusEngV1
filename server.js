@@ -198,27 +198,10 @@ app.get("/download_media", async (req, res) => {
         console.log("TOTAL FILES:", tasks.length)
 
         // ====== DOWNLOAD FUNCTION ======
-        async function downloadStream(url, retries = 3) {
-            for (let i = 0; i < retries; i++) {
-                try {
-                    return await axios({
-                        url,
-                        method: "GET",
-                        responseType: "stream",
-                        timeout: 60000,
-                        maxContentLength: Infinity,
-                        maxBodyLength: Infinity
-                    })
-                } catch (e) {
-                    if (i === retries - 1) throw e
-                }
-            }
-        }
 
         // ====== CONCURRENCY LIMIT ======
         async function runParallel(tasks, limit = 5) {
             let index = 0
-
             async function worker() {
                 while (index < tasks.length) {
                     const i = index++
@@ -229,61 +212,30 @@ app.get("/download_media", async (req, res) => {
                             archive.append(task.data, { name: task.name })
                             progress.done++
                         } else {
-                            const res = await downloadStream(task.url)
-                            const stream = res.data
-
-                            await new Promise((resolve) => {
-
-                                stream.on("end", () => {
-                                    progress.done++
-                                    resolve()
-                                })
-
-                                stream.on("error", () => {
-                                    progress.done++
-                                    resolve()
-                                })
-
-                                archive.append(stream, {
-                                    name: task.name
-                                })
+                            const response = await axios({
+                                url: task.url,
+                                method: "GET",
+                                responseType: "arraybuffer",
+                                timeout: 0
                             })
-                        }
 
-                    } catch (e) {
-                        console.log("FAIL:", task.url || task.name)
-                        progress.done++
-                    }
-                }
-            }async function worker() {
-                while (index < tasks.length) {
-                    const i = index++
-                    const task = tasks[i]
-
-                    try {
-                        if (task.type === "text") {
-                            archive.append(task.data, { name: task.name })
-                            progress.done++
-                        } else {
-                            const res = await downloadStream(task.url)
-                            const stream = res.data
-
-                            await new Promise((resolve) => {
-
-                                stream.on("end", () => {
-                                    progress.done++
-                                    resolve()
-                                })
-
-                                stream.on("error", () => {
-                                    progress.done++
-                                    resolve()
-                                })
-
-                                archive.append(stream, {
-                                    name: task.name
-                                })
-                            })
+                            if (response.data && response.data.byteLength > 0) {
+                                archive.append(response.data, { name: task.name })
+                            } else {
+                                console.log("EMPTY:", task.url)
+                            }
+                            // const stream = res.data
+                            // await new Promise((resolve) => {
+                            //
+                            //     stream.on("end", () => {
+                            //         progress.done++
+                            //         resolve()
+                            //     })
+                            //     stream.on("error", () => {
+                            //         progress.done++
+                            //         resolve()
+                            //     })
+                            // })
                         }
 
                     } catch (e) {
@@ -398,13 +350,17 @@ app.get("/download_media_part", async (req, res) => {
                     const response = await axios({
                         url: item.images[i],
                         method: "GET",
-                        responseType: "stream",
-                        timeout: 20000
+                        responseType: "arraybuffer",
+                        timeout: 0
                     })
 
-                    archive.append(response.data, {
-                        name: `${folder}/image_${i + 1}.jpg`
-                    })
+                    if (response.data && response.data.byteLength > 0) {
+                        archive.append(response.data, {
+                            name: `${folder}/image_${i + 1}.jpg`
+                        })
+                    } else {
+                        console.log("EMPTY IMAGE:", item.images[i])
+                    }
 
                 } catch (e) {
                     console.log("FAIL IMAGE:", item.images[i])
@@ -417,13 +373,17 @@ app.get("/download_media_part", async (req, res) => {
                     const response = await axios({
                         url: item.video_url,
                         method: "GET",
-                        responseType: "stream",
-                        timeout: 20000
+                        responseType: "arraybuffer",
+                        timeout: 0
                     })
 
-                    archive.append(response.data, {
-                        name: `${folder}/video.mp4`
-                    })
+                    if (response.data && response.data.byteLength > 0) {
+                        archive.append(response.data, {
+                            name: `${folder}/video.mp4`
+                        })
+                    } else {
+                        console.log("EMPTY VIDEO:", item.video_url)
+                    }
 
                 } catch (e) {
                     console.log("FAIL VIDEO:", item.video_url)
