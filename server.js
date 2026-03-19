@@ -153,10 +153,25 @@ app.get("/download_media", async (req, res) => {
             const folder = item.item_name.replace(/[\\/:*?"<>|]/g, "_")
 
             // note
+            // note id
+            tasks.push({
+                type: "text",
+                data: String(item.item_id),
+                name: `${folder}/note_id.txt`
+            })
+
+// note name
             tasks.push({
                 type: "text",
                 data: item.item_name,
-                name: `${folder}/note.txt`
+                name: `${folder}/note_name.txt`
+            })
+
+// note description
+            tasks.push({
+                type: "text",
+                data: (item.description || "").slice(0, 5000),
+                name: `${folder}/note_description.txt`
             })
 
             // images
@@ -468,6 +483,7 @@ app.post("/get_item_base", upload.single("file"), async (req, res) => {
         const item_ids = JSON.parse(raw)
 
         const path = "/api/v2/product/get_item_base_info"
+        const extraPath = "/api/v2/product/get_item_extra_info"
 
         // ===== CACHE =====
         let cache = {}
@@ -487,18 +503,16 @@ app.post("/get_item_base", upload.single("file"), async (req, res) => {
         let count = 0
 
         const tasks = chunks.map(chunk => async () => {
-            await sleep(200) // chống rate limit
+            await sleep(200)
 
             return retry(async () => {
+
                 const timestamp = Math.floor(Date.now() / 1000)
 
                 const base = partner_id + path + timestamp + access_token + shop_id
+                const sign = crypto.createHmac("sha256", partner_key).update(base).digest("hex")
 
-                const sign = crypto
-                    .createHmac("sha256", partner_key)
-                    .update(base)
-                    .digest("hex")
-
+                // ===== BASE INFO =====
                 const result = await axios.get(
                     `https://partner.shopeemobile.com${path}`,
                     {
@@ -513,12 +527,40 @@ app.post("/get_item_base", upload.single("file"), async (req, res) => {
                     }
                 )
 
+                // ===== EXTRA INFO =====
+                const timestamp2 = Math.floor(Date.now() / 1000)
+
+                const base2 = partner_id + extraPath + timestamp2 + access_token + shop_id
+                const sign2 = crypto.createHmac("sha256", partner_key).update(base2).digest("hex")
+
+                const extra = await axios.get(
+                    `https://partner.shopeemobile.com${extraPath}`,
+                    {
+                        params: {
+                            partner_id,
+                            shop_id,
+                            access_token,
+                            timestamp: timestamp2,
+                            sign: sign2,
+                            item_id_list: chunk.join(",")
+                        }
+                    }
+                )
+
                 const items = result.data.response.item_list || []
+                const extraItems = extra.data.response.item_list || []
+
+                // 👉 map description
+                const extraMap = {}
+                extraItems.forEach(i => {
+                    extraMap[i.item_id] = i.description_info?.text || ""
+                })
 
                 items.forEach(item => {
                     cache[item.item_id] = {
                         item_id: item.item_id,
                         item_name: item.item_name,
+                        description: extraMap[item.item_id] || "",
                         images: item.image?.image_url_list || [],
                         video_url: item.video_info?.[0]?.video_url || ""
                     }
