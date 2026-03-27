@@ -562,12 +562,12 @@ app.post("/get_item_base", upload.single("file"), async (req, res) => {
                 extraItems.forEach(i => {
                     extraMap[i.item_id] = i.description_info?.extended_description?.field_list?.map(f => f.text || "").join("\n") || ""
                 })
-                const desc =
-                    item.description_info?.extended_description?.field_list
-                        ?.map(f => f.text || "")
-                        .join("\n") || ""
 
                 items.forEach(item => {
+                    const desc =
+                        item.description_info?.extended_description?.field_list
+                            ?.map(f => f.text || "")
+                            .join("\n") || ""
                     cache[item.item_id] = {
                         item_id: item.item_id,
                         item_name: item.item_name,
