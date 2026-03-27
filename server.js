@@ -530,7 +530,7 @@ app.post("/get_item_base", upload.single("file"), async (req, res) => {
                             timestamp,
                             sign,
                             item_id_list: chunk.join(","),
-                            response_optional_fields: "description_info,weight,dimension"
+                            response_optional_fields: "description,description_info,weight,dimension"
                         }
                     }
                 )
@@ -567,7 +567,9 @@ app.post("/get_item_base", upload.single("file"), async (req, res) => {
                     const desc =
                         item.description_info?.extended_description?.field_list
                             ?.map(f => f.text || "")
-                            .join("\n") || ""
+                            .join("\n")
+                        || item.description   // 👈 fallback cực quan trọng
+                        || ""
                     cache[item.item_id] = {
                         item_id: item.item_id,
                         item_name: item.item_name,
