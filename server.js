@@ -133,7 +133,6 @@ app.get("/download_media", async (req, res) => {
         res.setHeader("Content-Type", "application/zip")
         res.setHeader("Content-Disposition", "attachment; filename=media.zip")
         res.setHeader("Connection", "keep-alive")
-        res.setHeader("Transfer-Encoding", "chunked")
         res.setHeader("X-Accel-Buffering", "no")
 
         const archive = archiver("zip", {
@@ -229,7 +228,7 @@ app.get("/download_media", async (req, res) => {
                             const response = await axios({
                                 url: task.url,
                                 method: "GET",
-                                responseType: "arraybuffer",
+                                responseType: "stream",
                                 timeout: 0
                             })
 
@@ -336,7 +335,6 @@ app.get("/download_media_part", async (req, res) => {
         res.setHeader("Content-Type", "application/zip")
         res.setHeader("Content-Disposition", `attachment; filename=media_part_${part}.zip`)
         res.setHeader("Connection", "keep-alive")
-        res.setHeader("Transfer-Encoding", "chunked")
         req.on("close", () => {
             console.log("CLIENT CLOSED")
             archive.destroy()
@@ -369,7 +367,7 @@ app.get("/download_media_part", async (req, res) => {
                     const response = await axios({
                         url: item.images[i],
                         method: "GET",
-                        responseType: "arraybuffer",
+                        responseType: "stream",
                         timeout: 0
                     })
 
@@ -392,7 +390,7 @@ app.get("/download_media_part", async (req, res) => {
                     const response = await axios({
                         url: item.video_url,
                         method: "GET",
-                        responseType: "arraybuffer",
+                        responseType: "stream",
                         timeout: 0
                     })
 
