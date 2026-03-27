@@ -133,6 +133,7 @@ app.get("/download_media", async (req, res) => {
         res.setHeader("Content-Type", "application/zip")
         res.setHeader("Content-Disposition", "attachment; filename=media.zip")
         res.setHeader("Connection", "keep-alive")
+        res.setHeader("Transfer-Encoding", "chunked")
         res.setHeader("X-Accel-Buffering", "no")
 
         const archive = archiver("zip", {
@@ -287,7 +288,7 @@ app.get("/total_parts", (req, res) => {
 
     })
 
-    const size = 200  // mỗi part ~200 file
+    const size = 100  // mỗi part ~200 file
     const total = Math.ceil(tasks.length / size)
 
     res.json({ total })
@@ -298,7 +299,7 @@ app.get("/download_media_part", async (req, res) => {
     try {
 
         const part = parseInt(req.query.part) || 0
-        const size = 200
+        const size = 100
 
         const cache = JSON.parse(fs.readFileSync("cache.json"))
         const items = Object.values(cache)
@@ -335,6 +336,7 @@ app.get("/download_media_part", async (req, res) => {
         res.setHeader("Content-Type", "application/zip")
         res.setHeader("Content-Disposition", `attachment; filename=media_part_${part}.zip`)
         res.setHeader("Connection", "keep-alive")
+        res.setHeader("Transfer-Encoding", "chunked")
         req.on("close", () => {
             console.log("CLIENT CLOSED")
             archive.destroy()
