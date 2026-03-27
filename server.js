@@ -291,7 +291,7 @@ app.get("/total_parts", (req, res) => {
 
     })
 
-    const size = 10  // mỗi part ~200 file
+    const size = 100  // mỗi part ~200 file
     const total = Math.ceil(tasks.length / size)
 
     res.json({ total })
@@ -302,7 +302,7 @@ app.get("/download_media_part", async (req, res) => {
     try {
 
         const part = parseInt(req.query.part) || 0
-        const size = 10
+        const size = 200
 
         const cache = JSON.parse(fs.readFileSync("cache.json"))
         const items = Object.values(cache)
