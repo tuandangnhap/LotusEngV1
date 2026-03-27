@@ -162,6 +162,12 @@ app.get("/download_media", async (req, res) => {
 
             tasks.push({
                 type: "text",
+                data: String(item.original_price || 0),
+                name: `${folder}/note_price.txt`
+            })
+
+            tasks.push({
+                type: "text",
                 data: item.item_name,
                 name: `${folder}/note_name.txt`
             })
@@ -352,6 +358,9 @@ app.get("/download_media_part", async (req, res) => {
                         Height: ${item.dimension?.height || ""}`,
                 { name: `${folder}/note_dimension.txt` }
             )
+            archive.append(String(item.original_price || 0), {
+                name: `${folder}/note_price.txt`
+            })
 
             // ===== IMAGE =====
             for (let i = 0; i < item.images.length; i++) {
@@ -530,7 +539,7 @@ app.post("/get_item_base", upload.single("file"), async (req, res) => {
                             timestamp,
                             sign,
                             item_id_list: chunk.join(","),
-                            response_optional_fields: "description,description_info,weight,dimension"
+                            response_optional_fields: "description,description_info,weight,dimension,price_info"
                         }
                     }
                 )
@@ -581,7 +590,8 @@ app.post("/get_item_base", upload.single("file"), async (req, res) => {
                             height: item.dimension?.package_height || ""
                         },
                         images: item.image?.image_url_list || [],
-                        video_url: item.video_info?.[0]?.video_url || ""
+                        video_url: item.video_info?.[0]?.video_url || "",
+                        original_price: item.price_info?.[0]?.original_price || 0
                     }
                 })
 
