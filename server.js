@@ -529,7 +529,8 @@ app.post("/get_item_base", upload.single("file"), async (req, res) => {
                             access_token,
                             timestamp,
                             sign,
-                            item_id_list: chunk.join(",")
+                            item_id_list: chunk.join(","),
+                            response_optional_fields: "description_info,weight,dimension"
                         }
                     }
                 )
@@ -561,12 +562,16 @@ app.post("/get_item_base", upload.single("file"), async (req, res) => {
                 extraItems.forEach(i => {
                     extraMap[i.item_id] = i.description_info?.extended_description?.field_list?.map(f => f.text || "").join("\n") || ""
                 })
+                const desc =
+                    item.description_info?.extended_description?.field_list
+                        ?.map(f => f.text || "")
+                        .join("\n") || ""
 
                 items.forEach(item => {
                     cache[item.item_id] = {
                         item_id: item.item_id,
                         item_name: item.item_name,
-                        description: extraMap[item.item_id] || "",
+                        description: desc,
                         weight: item.weight || "",
                         dimension: {
                             length: item.dimension?.package_length || "",
