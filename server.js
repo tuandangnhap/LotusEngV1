@@ -339,6 +339,7 @@ app.get("/download_media_part", async (req, res) => {
         res.setHeader("Transfer-Encoding", "chunked")
         req.on("close", () => {
             console.log("CLIENT CLOSED")
+            archive.destroy()
         })
 
         const archive = archiver("zip", { zlib: { level: 1 } })
@@ -410,12 +411,13 @@ app.get("/download_media_part", async (req, res) => {
         }
 
         console.log("FINALIZING ZIP...")
-        await archive.finalize()
-        console.log("ZIP DONE")
 
-        archive.on("end", () => {
-            console.log("ZIP STREAM END")
+        await new Promise((resolve, reject) => {
+            archive.on("end", resolve)
+            archive.on("error", reject)
+            archive.finalize()
         })
+        console.log("ZIP DONE")
     } catch (e) {
         console.log(e)
         res.end()
