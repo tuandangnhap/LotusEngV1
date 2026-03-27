@@ -555,8 +555,8 @@ app.post("/get_item_base", upload.single("file"), async (req, res) => {
                     }
                 )
 
-                const items = result.data.response.item_list || []
-                const extraItems = extra.data.response.item_list || []
+                const items = result.data?.response?.item_list || []
+                const extraItems = extra.data?.response?.item_list || []
 
                 const extraMap = {}
                 extraItems.forEach(i => {
