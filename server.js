@@ -260,7 +260,7 @@ app.get("/download_media", async (req, res) => {
         await runParallel(tasks, 2)
 
         // 👇 đợi stream flush hết
-        await new Promise(r => setTimeout(r, 1000))
+        await new Promise(r => setTimeout(r, 500))
 
         await archive.finalize()
 
@@ -277,22 +277,31 @@ app.get("/download_media", async (req, res) => {
     }
 })
 
+// app.get("/total_parts", (req, res) => {
+//
+//     const cache = JSON.parse(fs.readFileSync("cache.json"))
+//     const items = Object.values(cache)
+//
+//     const tasks = []
+//
+//     items.forEach(item => {
+//
+//         item.images.forEach(url => tasks.push(url))
+//         if (item.video_url) tasks.push(item.video_url)
+//
+//     })
+//
+//     const size = 100  // mỗi part ~200 file
+//     const total = Math.ceil(tasks.length / size)
+//
+//     res.json({ total })
+// })
 app.get("/total_parts", (req, res) => {
-
     const cache = JSON.parse(fs.readFileSync("cache.json"))
     const items = Object.values(cache)
 
-    const tasks = []
-
-    items.forEach(item => {
-
-        item.images.forEach(url => tasks.push(url))
-        if (item.video_url) tasks.push(item.video_url)
-
-    })
-
-    const size = 100  // mỗi part ~200 file
-    const total = Math.ceil(tasks.length / size)
+    const size = 10 // 10 item / part
+    const total = Math.ceil(items.length / size)
 
     res.json({ total })
 })
@@ -302,7 +311,7 @@ app.get("/download_media_part", async (req, res) => {
     try {
 
         const part = parseInt(req.query.part) || 0
-        const size = 200
+        const size = 10
 
         const cache = JSON.parse(fs.readFileSync("cache.json"))
         const items = Object.values(cache)
@@ -342,10 +351,10 @@ app.get("/download_media_part", async (req, res) => {
         res.setHeader("Transfer-Encoding", "chunked")
 
         const archive = archiver("zip", { zlib: { level: 1 } })
-        req.on("close", () => {
-            console.log("CLIENT CLOSED")
-            archive.destroy()
-        })
+        // req.on("close", () => {
+        //     console.log("CLIENT CLOSED")
+        //     archive.destroy()
+        // })
         archive.pipe(res)
 
         for (const item of currentItems) {
