@@ -267,6 +267,9 @@ app.get("/download_media", async (req, res) => {
         archive.on("end", () => {
             console.log("ZIP STREAM END")
         })
+        archive.on("finish", () => {
+            console.log("ZIP DONE")
+        })
 
     } catch (e) {
         console.log("ERROR:", e.message)
@@ -288,7 +291,7 @@ app.get("/total_parts", (req, res) => {
 
     })
 
-    const size = 100  // mỗi part ~200 file
+    const size = 10  // mỗi part ~200 file
     const total = Math.ceil(tasks.length / size)
 
     res.json({ total })
@@ -299,7 +302,7 @@ app.get("/download_media_part", async (req, res) => {
     try {
 
         const part = parseInt(req.query.part) || 0
-        const size = 100
+        const size = 10
 
         const cache = JSON.parse(fs.readFileSync("cache.json"))
         const items = Object.values(cache)
@@ -337,12 +340,12 @@ app.get("/download_media_part", async (req, res) => {
         res.setHeader("Content-Disposition", `attachment; filename=media_part_${part}.zip`)
         res.setHeader("Connection", "keep-alive")
         res.setHeader("Transfer-Encoding", "chunked")
+
+        const archive = archiver("zip", { zlib: { level: 1 } })
         req.on("close", () => {
             console.log("CLIENT CLOSED")
             archive.destroy()
         })
-
-        const archive = archiver("zip", { zlib: { level: 1 } })
         archive.pipe(res)
 
         for (const item of currentItems) {
@@ -373,12 +376,12 @@ app.get("/download_media_part", async (req, res) => {
                         timeout: 0
                     })
 
-                    if (response.data && response.data.byteLength > 0) {
+
+
+                    if (response.data) {
                         archive.append(response.data, {
                             name: `${folder}/image_${i + 1}.jpg`
                         })
-                    } else {
-                        console.log("EMPTY IMAGE:", item.images[i])
                     }
 
                 } catch (e) {
@@ -396,12 +399,10 @@ app.get("/download_media_part", async (req, res) => {
                         timeout: 0
                     })
 
-                    if (response.data && response.data.byteLength > 0) {
+                    if (response.data) {
                         archive.append(response.data, {
                             name: `${folder}/video.mp4`
                         })
-                    } else {
-                        console.log("EMPTY VIDEO:", item.video_url)
                     }
 
                 } catch (e) {
@@ -418,6 +419,9 @@ app.get("/download_media_part", async (req, res) => {
             archive.finalize()
         })
         console.log("ZIP DONE")
+        archive.on("finish", () => {
+            console.log("ZIP DONE")
+        })
     } catch (e) {
         console.log(e)
         res.end()
