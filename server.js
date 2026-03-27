@@ -171,6 +171,14 @@ app.get("/download_media", async (req, res) => {
                 data: item.description || "",
                 name: `${folder}/note_description.txt`
             })
+            // ===== DIMENSION =====
+            tasks.push({
+                type: "text",
+                data: `Length: ${item.dimension?.length || ""}
+                Width: ${item.dimension?.width || ""}
+                Height: ${item.dimension?.height || ""}`,
+                name: `${folder}/note_dimension.txt`
+            })
 
             // ===== IMAGES =====
             item.images.forEach((url, i) => {
@@ -338,6 +346,12 @@ app.get("/download_media_part", async (req, res) => {
             archive.append(String(item.item_id), { name: `${folder}/note_id.txt` })
             archive.append(item.item_name, { name: `${folder}/note_name.txt` })
             archive.append(item.description || "", { name: `${folder}/note_description.txt` })
+            archive.append(
+                `Length: ${item.dimension?.length || ""}
+                        Width: ${item.dimension?.width || ""}
+                        Height: ${item.dimension?.height || ""}`,
+                { name: `${folder}/note_dimension.txt` }
+            )
 
             // ===== IMAGE =====
             for (let i = 0; i < item.images.length; i++) {
@@ -545,7 +559,7 @@ app.post("/get_item_base", upload.single("file"), async (req, res) => {
 
                 const extraMap = {}
                 extraItems.forEach(i => {
-                    extraMap[i.item_id] = i.description_info?.text || ""
+                    extraMap[i.item_id] = i.description_info?.extended_description?.field_list?.map(f => f.text || "").join("\n") || ""
                 })
 
                 items.forEach(item => {
@@ -553,6 +567,12 @@ app.post("/get_item_base", upload.single("file"), async (req, res) => {
                         item_id: item.item_id,
                         item_name: item.item_name,
                         description: extraMap[item.item_id] || "",
+                        weight: item.weight || "",
+                        dimension: {
+                            length: item.dimension?.package_length || "",
+                            width: item.dimension?.package_width || "",
+                            height: item.dimension?.package_height || ""
+                        },
                         images: item.image?.image_url_list || [],
                         video_url: item.video_info?.[0]?.video_url || ""
                     }
