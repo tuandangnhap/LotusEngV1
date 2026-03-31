@@ -182,7 +182,8 @@ app.get("/download_media", async (req, res) => {
                 type: "text",
                 data: `Length: ${item.dimension?.length || ""}
                 Width: ${item.dimension?.width || ""}
-                Height: ${item.dimension?.height || ""}`,
+                Height: ${item.dimension?.height || ""}
+                Weight: ${item.weight || ""}`,
                 name: `${folder}/note_dimension.txt`
             })
 
@@ -368,7 +369,8 @@ app.get("/download_media_part", async (req, res) => {
             archive.append(
                 `Length: ${item.dimension?.length || ""}
                         Width: ${item.dimension?.width || ""}
-                        Height: ${item.dimension?.height || ""}`,
+                        Height: ${item.dimension?.height || ""}
+                        Weight: ${item.weight || ""}`,
                 { name: `${folder}/note_dimension.txt` }
             )
             archive.append(String(item.original_price || 0), {
@@ -598,12 +600,12 @@ app.post("/get_item_base", upload.single("file"), async (req, res) => {
                         item_id: item.item_id,
                         item_name: item.item_name,
                         description: desc,
-                        weight: item.weight || "",
                         dimension: {
                             length: item.dimension?.package_length || "",
                             width: item.dimension?.package_width || "",
                             height: item.dimension?.package_height || ""
                         },
+                        weight: item.weight || "",
                         images: item.image?.image_url_list || [],
                         video_url: item.video_info?.[0]?.video_url || "",
                         original_price: item.price_info?.[0]?.original_price || 0
