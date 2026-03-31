@@ -230,7 +230,7 @@ app.get("/download_media", async (req, res) => {
                             const response = await axios({
                                 url: task.url,
                                 method: "GET",
-                                responseType: "stream",
+                                responseType: "arraybuffer",
                                 timeout: 0
                             })
 
@@ -383,7 +383,7 @@ app.get("/download_media_part", async (req, res) => {
                     const response = await axios({
                         url: item.images[i],
                         method: "GET",
-                        responseType: "stream",
+                        responseType: "arraybuffer",
                         timeout: 0
                     })
 
@@ -406,7 +406,7 @@ app.get("/download_media_part", async (req, res) => {
                     const response = await axios({
                         url: item.video_url,
                         method: "GET",
-                        responseType: "stream",
+                        responseType: "arraybuffer",
                         timeout: 0
                     })
 
