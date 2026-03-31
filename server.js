@@ -468,7 +468,7 @@ app.get("/get_items", async (req, res) => {
 
     let offset = 0
     const page_size = 100
-    let item_ids = [...new Set(item_ids)]
+    let item_ids = []
 
     while (true) {
         const timestamp = Math.floor(Date.now() / 1000)
@@ -503,6 +503,10 @@ app.get("/get_items", async (req, res) => {
         if (!data.has_next_page) break
         offset = data.next_offset
     }
+    // ===== REMOVE DUPLICATE =====
+    item_ids = [...new Set(item_ids)]
+
+    console.log("Total after unique:", item_ids.length)
 
     res.json(item_ids)
 })
@@ -583,6 +587,13 @@ app.post("/get_item_base", upload.single("file"), async (req, res) => {
 
                 const items = result.data?.response?.item_list || []
                 const extraItems = extra.data?.response?.item_list || []
+                const fetched_ids = items.map(i => String(i.item_id))
+
+                const missing = chunk.filter(id => !fetched_ids.includes(id))
+
+                if (missing.length) {
+                    console.log("❌ Missing item:", missing)
+                }
 
                 const extraMap = {}
                 extraItems.forEach(i => {
