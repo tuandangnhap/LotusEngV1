@@ -468,7 +468,7 @@ app.get("/get_items", async (req, res) => {
 
     let offset = 0
     const page_size = 100
-    let item_ids = []
+    let item_ids = [...new Set(item_ids)]
 
     while (true) {
         const timestamp = Math.floor(Date.now() / 1000)
