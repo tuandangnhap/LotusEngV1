@@ -681,7 +681,7 @@ app.post("/upload_image", upload.single("image"), async (req, res) => {
         })
 
         fs.unlinkSync(req.file.path)
-
+        console.log("FULL RESPONSE:", JSON.stringify(result.data, null, 2))
         console.log("RESPONSE:", result.data)
 
         let image_url = ""
