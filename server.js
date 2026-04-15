@@ -646,79 +646,28 @@ app.post("/get_item_base", upload.single("file"), async (req, res) => {
 
 const FormData = require("form-data")
 
-app.post("/upload_image", upload.single("file"), async (req, res) => {
-    try {
+const form = new FormData()
 
-        if (!req.file) {
-            return res.json({ error: "No file uploaded" })
-        }
+// 🔥 QUAN TRỌNG: phải là "image"
+form.append("image", fs.createReadStream(req.file.path))
 
-        console.log("FILE:", req.file) // 👈 check
+const url = `https://partner.shopeemobile.com${pathApi}?partner_id=${partner_id}&timestamp=${timestamp}&access_token=${access_token}&shop_id=${shop_id}&sign=${signStr}`
 
-        const pathApi = "/api/v2/media_space/upload_image"
-        const timestamp = Math.floor(Date.now() / 1000)
+const result = await axios.post(url, form, {
+    headers: form.getHeaders(),
+    maxBodyLength: Infinity,
+    maxContentLength: Infinity
+})
 
-        const base = partner_id + pathApi + timestamp + access_token + shop_id
-        const signStr = crypto
-            .createHmac("sha256", partner_key)
-            .update(base)
-            .digest("hex")
+// log full để debug
+console.log("FULL RESPONSE:", JSON.stringify(result.data, null, 2))
 
-        const form = new FormData()
+// ✅ lấy URL chuẩn
+const image_url = result.data?.response?.image_info?.image_url || ""
 
-        form.append("file", fs.createReadStream(req.file.path))
-
-        const url = `https://partner.shopeemobile.com${pathApi}?partner_id=${partner_id}&timestamp=${timestamp}&access_token=${access_token}&shop_id=${shop_id}&sign=${signStr}`
-
-        const result = await axios.post(url, form, {
-            headers: {
-                ...form.getHeaders()
-            },
-            maxBodyLength: Infinity,
-            maxContentLength: Infinity
-        })
-
-        fs.unlinkSync(req.file.path)
-        console.log("FULL RESPONSE:", JSON.stringify(result.data, null, 2))
-        console.log("RESPONSE:", result.data)
-
-        let image_url = ""
-
-// gom tất cả list lại (ưu tiên list mới)
-        let urlList = []
-
-        if (result.data?.response?.image_info_list?.length) {
-            urlList = result.data.response.image_info_list[0]?.image_info?.image_url_list || []
-        } else if (result.data?.response?.image_info) {
-            urlList = result.data.response.image_info.image_url_list || []
-        }
-
-// debug xem có gì
-        console.log("URL LIST:", urlList)
-
-// lấy VN trước, fallback cái đầu tiên
-        const vn = urlList.find(i => i.image_url_region === "VN")
-
-        if (vn) {
-            image_url = vn.image_url
-        } else if (urlList.length > 0) {
-            image_url = urlList[0].image_url
-        }
-
-        res.json({
-            success: true,
-            url: image_url
-        })
-
-    } catch (e) {
-
-        console.log("ERROR:", e.response?.data || e.message)
-
-        res.json({
-            success: false,
-            error: e.response?.data || e.message
-        })
-    }
+res.json({
+    success: true,
+    url: image_url
 })
 
 /* ================== START ================== */
