@@ -270,13 +270,19 @@
         const text = await file.text()
 
         try {
-            const json = JSON.parse(text)
+
+            // ===== FIX BOM + TRIM =====
+            const cleanText = text.replace(/^\uFEFF/, "").trim()
+
+            const json = JSON.parse(cleanText)
 
             // ===== MODE UPDATE ITEM (NEW) =====
             if (updateMode === "item") {
 
                 log("📦 Updating item media (image + video)...")
-                log("Total items: " + Object.keys(json).length)
+
+                const itemCount = Object.keys(json).length
+                log("Total items: " + itemCount)
 
                 const res = await fetch("/update_item_media", {
                     method: "POST",
@@ -311,7 +317,7 @@
             log(JSON.stringify(data, null, 2))
 
         } catch (e) {
-            log("❌ Invalid JSON file")
+            log("❌ Invalid JSON file: " + e.message)
         }
     }
 
