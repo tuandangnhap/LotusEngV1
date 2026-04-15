@@ -157,6 +157,17 @@
     function saveJson() {
         window.open("/download_json")
     }
+    function chunkObject(obj, size = 10) {
+        const entries = Object.entries(obj)
+        const chunks = []
+
+        for (let i = 0; i < entries.length; i += size) {
+            const part = Object.fromEntries(entries.slice(i, i + size))
+            chunks.push(part)
+        }
+
+        return chunks
+    }
     document.getElementById("downloadItems").onclick = async () => {
 
         const res = await fetch("/get_items")
@@ -276,28 +287,31 @@
 
             const json = JSON.parse(cleanText)
 
-            // ===== MODE UPDATE ITEM (NEW) =====
+            // ===== MODE UPDATE ITEM =====
+            // ===== MODE UPDATE ITEM =====
             if (updateMode === "item") {
 
-                log("📦 Updating item media (image + video)...")
+                const cleanText = text.replace(/^\uFEFF/, "").trim()
+                const json = JSON.parse(cleanText)
 
-                const itemCount = Object.keys(json).length
-                log("Total items: " + itemCount)
+                const chunks = chunkObject(json, 10)
 
-                const res = await fetch("/update_item_media", {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json"
-                    },
-                    body: JSON.stringify(json)
-                })
+                log("📦 Total chunks: " + chunks.length)
 
-                const text = await res.text()
-                log(text)
-                return
+                for (let i = 0; i < chunks.length; i++) {
 
-                log("✅ Done:")
-                log(JSON.stringify(data, null, 2))
+                    log(`Uploading chunk ${i + 1}/${chunks.length}`)
+
+                    const res = await fetch("/update_item_media", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(chunks[i])
+                    })
+
+                    log(await res.text())
+                }
+
+                log("DONE ALL CHUNKS 🎉")
 
                 updateMode = false
                 return
