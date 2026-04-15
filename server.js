@@ -646,30 +646,63 @@ app.post("/get_item_base", upload.single("file"), async (req, res) => {
 
 const FormData = require("form-data")
 
-const form = new FormData()
+app.post("/upload_image", upload.single("image"), async (req, res) => {
+    try {
 
-// 🔥 QUAN TRỌNG: phải là "image"
-form.append("image", fs.createReadStream(req.file.path))
+        if (!req.file) {
+            return res.json({ success: false, error: "No file uploaded" })
+        }
 
-const url = `https://partner.shopeemobile.com${pathApi}?partner_id=${partner_id}&timestamp=${timestamp}&access_token=${access_token}&shop_id=${shop_id}&sign=${signStr}`
+        const pathApi = "/api/v2/media_space/upload_image"
+        const timestamp = Math.floor(Date.now() / 1000)
 
-const result = await axios.post(url, form, {
-    headers: form.getHeaders(),
-    maxBodyLength: Infinity,
-    maxContentLength: Infinity
+        const base = partner_id + pathApi + timestamp + access_token + shop_id
+        const signature = crypto
+            .createHmac("sha256", partner_key)
+            .update(base)
+            .digest("hex")
+
+        // 👇 tạo form data
+        const form = new FormData()
+        form.append("image", fs.createReadStream(req.file.path))
+
+        const result = await axios.post(
+            `https://partner.shopeemobile.com${pathApi}?partner_id=${partner_id}&timestamp=${timestamp}&access_token=${access_token}&shop_id=${shop_id}&sign=${signature}`,
+            form,
+            {
+                headers: form.getHeaders(),
+                maxContentLength: Infinity,
+                maxBodyLength: Infinity
+            }
+        )
+
+        // 🔥 LẤY URL ĐÚNG CHỖ
+        const imageList = result.data?.response?.image_info?.image_url_list || []
+
+        const vnImage = imageList.find(i => i.image_url_region === "VN")
+
+        const finalUrl = vnImage
+            ? vnImage.image_url
+            : imageList[0]?.image_url || ""
+
+        // ❌ xóa file temp
+        fs.unlinkSync(req.file.path)
+
+        res.json({
+            success: true,
+            url: finalUrl,
+            raw: result.data // debug nếu cần
+        })
+
+    } catch (e) {
+        console.log("UPLOAD ERROR:", e.response?.data || e.message)
+
+        res.json({
+            success: false,
+            error: e.response?.data || e.message
+        })
+    }
 })
-
-// log full để debug
-console.log("FULL RESPONSE:", JSON.stringify(result.data, null, 2))
-
-// ✅ lấy URL chuẩn
-const image_url = result.data?.response?.image_info?.image_url || ""
-
-res.json({
-    success: true,
-    url: image_url
-})
-
 /* ================== START ================== */
 
 app.listen(PORT, () => {
