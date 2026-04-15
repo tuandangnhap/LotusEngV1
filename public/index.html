@@ -292,7 +292,9 @@
                     body: JSON.stringify(json)
                 })
 
-                const data = await res.json()
+                const text = await res.text()
+                log(text)
+                return
 
                 log("✅ Done:")
                 log(JSON.stringify(data, null, 2))
