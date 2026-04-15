@@ -141,6 +141,8 @@
 <script>
 
     let eventSource = null
+    let updateMode = false
+    let updateItemIds = []
     const terminal = document.getElementById("terminal")
     const cmd = document.getElementById("cmd")
     const progressBox = document.getElementById("progressBox")
@@ -258,24 +260,45 @@
         }
     }
     document.getElementById("jsonFile").onchange = async function(){
-
         const file = this.files[0]
+        if(!file) return
 
-        const form = new FormData()
+        // 👉 đọc file trực tiếp
+        const text = await file.text()
 
-        form.append("file",file)
+        try{
 
-        log("Processing items...")
+            const ids = JSON.parse(text)
 
-        const res = await fetch("/get_item_base",{
-            method:"POST",
-            body:form
-        })
+            // ===== MODE UPDATE IMAGE =====
+            if(updateMode){
 
-        const data = await res.json()
+                updateItemIds = ids
 
-        log(JSON.stringify(data,null,2))
+                log("Loaded item IDs: " + ids.length)
+                log("Enter new image URL:")
 
+                return
+            }
+
+            // ===== MODE CŨ (get_item_base) =====
+            const form = new FormData()
+            form.append("file", file)
+
+            log("Processing items...")
+
+            const res = await fetch("/get_item_base",{
+                method:"POST",
+                body:form
+            })
+
+            const data = await res.json()
+
+            log(JSON.stringify(data,null,2))
+
+        }catch(e){
+            log("❌ Invalid JSON file")
+        }
     }
 
     cmd.addEventListener("keydown",async(e)=>{
@@ -284,6 +307,37 @@
 
             const command = cmd.value
 
+            // 👉 nếu đang update
+            if(updateMode && updateItemIds.length){
+
+                const imageUrl = command
+
+                log("Updating items...")
+                log("Image URL: " + imageUrl)
+
+                const res = await fetch("/update_items_image",{
+                    method:"POST",
+                    headers:{
+                        "Content-Type":"application/json"
+                    },
+                    body: JSON.stringify({
+                        item_ids: updateItemIds,
+                        image_url: imageUrl
+                    })
+                })
+
+                const data = await res.json()
+
+                log(JSON.stringify(data,null,2))
+
+                // reset
+                updateMode = false
+                updateItemIds = []
+
+                cmd.value=""
+                return
+            }
+
             log(command)
 
             if(command==="connect shop"){
@@ -291,6 +345,11 @@
                 log("Opening Shopee authorization...")
                 window.open("/connect")
 
+            }
+            else if(command==="update_image"){
+                log("Upload JSON file (item_id list)...")
+                updateMode = true
+                document.getElementById("jsonFile").click()
             }
 
             else if(command==="get_item_list"){

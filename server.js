@@ -703,6 +703,67 @@ app.post("/upload_image", upload.single("image"), async (req, res) => {
         })
     }
 })
+
+app.post("/update_items_image", async (req, res) => {
+    try {
+
+        const { item_ids, image_url } = req.body
+
+        if (!item_ids || !image_url) {
+            return res.json({ error: "Missing params" })
+        }
+
+        const updatePath = "/api/v2/product/update_item"
+
+        let success = 0
+        let fail = 0
+
+        const tasks = item_ids.map(item_id => async () => {
+
+            try {
+
+                const timestamp = Math.floor(Date.now() / 1000)
+
+                const base = partner_id + updatePath + timestamp + access_token + shop_id
+                const sign = crypto
+                    .createHmac("sha256", partner_key)
+                    .update(base)
+                    .digest("hex")
+
+                await axios.post(
+                    `https://partner.shopeemobile.com${updatePath}?partner_id=${partner_id}&timestamp=${timestamp}&access_token=${access_token}&shop_id=${shop_id}&sign=${sign}`,
+                    {
+                        item_id: Number(item_id),
+                        image: {
+                            image_url_list: [image_url]
+                        },
+                        video_info: [] // 🔥 xóa video
+                    }
+                )
+
+                success++
+                console.log("✅", item_id)
+
+            } catch (e) {
+                fail++
+                console.log("❌", item_id, e.response?.data || e.message)
+            }
+
+        })
+
+        // chạy song song (3 luồng)
+        await runWithLimit(tasks, 3)
+
+        res.json({
+            success,
+            fail,
+            total: item_ids.length
+        })
+
+    } catch (e) {
+        res.json({ error: e.message })
+    }
+})
 /* ================== START ================== */
 
 app.listen(PORT, () => {
