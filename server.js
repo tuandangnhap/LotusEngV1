@@ -686,18 +686,25 @@ app.post("/upload_image", upload.single("image"), async (req, res) => {
 
         let image_url = ""
 
-// ưu tiên image_info_list (chuẩn hơn)
-        const listWrap = result.data?.response?.image_info_list
+// gom tất cả list lại (ưu tiên list mới)
+        let urlList = []
 
-        if (listWrap && listWrap.length > 0) {
-            const list = listWrap[0]?.image_info?.image_url_list || []
-            const vn = list.find(i => i.image_url_region === "VN")
-            image_url = vn?.image_url || list[0]?.image_url || ""
-        } else {
-            // fallback image_info
-            const list = result.data?.response?.image_info?.image_url_list || []
-            const vn = list.find(i => i.image_url_region === "VN")
-            image_url = vn?.image_url || list[0]?.image_url || ""
+        if (result.data?.response?.image_info_list?.length) {
+            urlList = result.data.response.image_info_list[0]?.image_info?.image_url_list || []
+        } else if (result.data?.response?.image_info) {
+            urlList = result.data.response.image_info.image_url_list || []
+        }
+
+// debug xem có gì
+        console.log("URL LIST:", urlList)
+
+// lấy VN trước, fallback cái đầu tiên
+        const vn = urlList.find(i => i.image_url_region === "VN")
+
+        if (vn) {
+            image_url = vn.image_url
+        } else if (urlList.length > 0) {
+            image_url = urlList[0].image_url
         }
 
         res.json({
