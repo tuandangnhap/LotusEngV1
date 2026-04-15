@@ -809,6 +809,7 @@ app.post("/update_item_media", async (req, res) => {
 
                 const base = partner_id + updatePath + timestamp + access_token + shop_id
                 const sign = crypto.createHmac("sha256", partner_key).update(base).digest("hex")
+                res.json({ success: true })
 
                 await axios.post(
                     `https://partner.shopeemobile.com${updatePath}?partner_id=${partner_id}&timestamp=${timestamp}&access_token=${access_token}&shop_id=${shop_id}&sign=${sign}`,
