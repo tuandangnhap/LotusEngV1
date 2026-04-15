@@ -646,7 +646,7 @@ app.post("/get_item_base", upload.single("file"), async (req, res) => {
 
 const FormData = require("form-data")
 
-app.post("/upload_image", upload.single("image"), async (req, res) => {
+app.post("/upload_image", upload.single("file"), async (req, res) => {
     try {
 
         if (!req.file) {
@@ -666,9 +666,7 @@ app.post("/upload_image", upload.single("image"), async (req, res) => {
 
         const form = new FormData()
 
-        form.append("file", fs.createReadStream(req.file.path), {
-            filename: req.file.originalname
-        })
+        form.append("file", fs.createReadStream(req.file.path))
 
         const url = `https://partner.shopeemobile.com${pathApi}?partner_id=${partner_id}&timestamp=${timestamp}&access_token=${access_token}&shop_id=${shop_id}&sign=${signStr}`
 
