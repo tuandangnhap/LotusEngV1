@@ -788,7 +788,6 @@ app.get("/download_json", (req, res) => {
 
 app.post("/update_item_media", async (req, res) => {
     try {
-
         const items = req.body
         if (!items) return res.json({ error: "Missing data" })
 
@@ -798,57 +797,47 @@ app.post("/update_item_media", async (req, res) => {
         let fail = 0
 
         const tasks = Object.values(items).map(item => async () => {
-
             try {
-
-                const item_id = item.item_id
-                const images = item.images || []
-                const video = item.video_url || ""
-
                 const timestamp = Math.floor(Date.now() / 1000)
 
                 const base = partner_id + updatePath + timestamp + access_token + shop_id
                 const sign = crypto.createHmac("sha256", partner_key).update(base).digest("hex")
-                res.json({ success: true })
 
-                await axios.post(
+                const payload = {
+                    item_id: Number(item.item_id),
+                    image: {
+                        image_url_list: item.images || []
+                    },
+                    video_info: item.video_url
+                        ? [{ video_url: item.video_url }]
+                        : []
+                }
+
+                const result = await axios.post(
                     `https://partner.shopeemobile.com${updatePath}?partner_id=${partner_id}&timestamp=${timestamp}&access_token=${access_token}&shop_id=${shop_id}&sign=${sign}`,
-                    {
-                        timeout: 15000,
-                        item_id: Number(item_id),
-
-                        // chỉ update media
-                        image: {
-                            image_url_list: images
-                        },
-
-                        video_info: video
-                            ? [{
-                                video_url: video
-                            }]
-                            : []
-                    }
+                    payload
                 )
 
+                console.log("SHOPEE RESPONSE:", result.data)
+
                 success++
-                console.log("✅ updated:", item_id)
 
             } catch (e) {
                 fail++
-                console.log("❌ fail:", e.response?.data || e.message)
+                console.log("❌ FAIL:", e.response?.data || e.message)
             }
         })
 
         await runWithLimit(tasks, 3)
 
-        res.json({
+        return res.json({
             success,
             fail,
             total: Object.keys(items).length
         })
 
     } catch (e) {
-        res.json({ error: e.message })
+        return res.json({ error: e.message })
     }
 })
 /* ================== START ================== */
