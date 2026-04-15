@@ -308,7 +308,10 @@
                         body: JSON.stringify(chunks[i])
                     })
 
-                    log(await res.text())
+                    const raw = await res.text()
+
+                    log("RAW RESPONSE:")
+                    log(raw || "EMPTY RESPONSE ❌")
                 }
 
                 log("DONE ALL CHUNKS 🎉")

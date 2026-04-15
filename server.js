@@ -815,6 +815,7 @@ app.post("/update_item_media", async (req, res) => {
                 await axios.post(
                     `https://partner.shopeemobile.com${updatePath}?partner_id=${partner_id}&timestamp=${timestamp}&access_token=${access_token}&shop_id=${shop_id}&sign=${sign}`,
                     {
+                        timeout: 15000,
                         item_id: Number(item_id),
 
                         // chỉ update media
