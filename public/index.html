@@ -124,6 +124,7 @@
     <div id="actions">
         <button id="downloadItems">Download list item</button>
         <button id="downloadMedia">Download Video Image</button>
+        <button onclick="saveJson()">Save JSON</button>
     </div>
 
     <div id="progressBox">
@@ -152,6 +153,9 @@
     function log(text){
         terminal.innerHTML += "<pre>> " + text + "</pre>"
         terminal.scrollTop = terminal.scrollHeight
+    }
+    function saveJson() {
+        window.open("/download_json")
     }
     document.getElementById("downloadItems").onclick = async () => {
 

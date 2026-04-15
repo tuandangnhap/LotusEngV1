@@ -765,6 +765,25 @@ app.post("/update_items_image", async (req, res) => {
         res.json({ error: e.message })
     }
 })
+
+app.get("/download_json", (req, res) => {
+    try {
+        if (!fs.existsSync("cache.json")) {
+            return res.json({ error: "No data" })
+        }
+
+        const filePath = path.join(__dirname, "cache.json")
+
+        res.setHeader("Content-Type", "application/json")
+        res.setHeader("Content-Disposition", "attachment; filename=items.json")
+
+        const stream = fs.createReadStream(filePath)
+        stream.pipe(res)
+
+    } catch (e) {
+        res.json({ error: e.message })
+    }
+})
 /* ================== START ================== */
 
 app.listen(PORT, () => {
