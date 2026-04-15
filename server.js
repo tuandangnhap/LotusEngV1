@@ -705,21 +705,25 @@ app.post("/upload_image", upload.single("image"), async (req, res) => {
     }
 })
 
-app.post("/update_items_image", async (req, res) => {
+app.post("/update_items_image", upload.single("file"), async (req, res) => {
     try {
 
-        const { item_ids, image_url } = req.body
-
-        if (!item_ids || !image_url) {
-            return res.json({ error: "Missing params" })
+        if (!req.file) {
+            return res.json({ error: "No file uploaded" })
         }
+
+        // đọc file json
+        const raw = fs.readFileSync(req.file.path)
+        const json = JSON.parse(raw)
+
+        const items = Object.values(json)
 
         const updatePath = "/api/v2/product/update_item"
 
         let success = 0
         let fail = 0
 
-        const tasks = item_ids.map(item_id => async () => {
+        const tasks = items.map(item => async () => {
 
             try {
 
@@ -731,34 +735,47 @@ app.post("/update_items_image", async (req, res) => {
                     .update(base)
                     .digest("hex")
 
+                // 👇 xử lý video đúng format Shopee
+                let video_info = []
+                if (item.video_url) {
+                    video_info = [
+                        {
+                            video_url: item.video_url
+                        }
+                    ]
+                }
+
                 await axios.post(
                     `https://partner.shopeemobile.com${updatePath}?partner_id=${partner_id}&timestamp=${timestamp}&access_token=${access_token}&shop_id=${shop_id}&sign=${sign}`,
                     {
-                        item_id: Number(item_id),
+                        item_id: Number(item.item_id),
                         image: {
-                            image_url_list: [image_url]
+                            image_url_list: item.images || []
                         },
-                        video_info: [] // 🔥 xóa video
+                        video_info: video_info
                     }
                 )
 
                 success++
-                console.log("✅", item_id)
+                console.log("✅", item.item_id)
 
             } catch (e) {
                 fail++
-                console.log("❌", item_id, e.response?.data || e.message)
+                console.log("❌", item.item_id, e.response?.data || e.message)
             }
 
         })
 
-        // chạy song song (3 luồng)
+        // chạy song song 3 luồng
         await runWithLimit(tasks, 3)
+
+        // xoá file temp
+        fs.unlinkSync(req.file.path)
 
         res.json({
             success,
             fail,
-            total: item_ids.length
+            total: items.length
         })
 
     } catch (e) {
