@@ -784,6 +784,71 @@ app.get("/download_json", (req, res) => {
         res.json({ error: e.message })
     }
 })
+
+
+app.post("/update_item_media", async (req, res) => {
+    try {
+
+        const items = req.body
+        if (!items) return res.json({ error: "Missing data" })
+
+        const updatePath = "/api/v2/product/update_item"
+
+        let success = 0
+        let fail = 0
+
+        const tasks = Object.values(items).map(item => async () => {
+
+            try {
+
+                const item_id = item.item_id
+                const images = item.images || []
+                const video = item.video_url || ""
+
+                const timestamp = Math.floor(Date.now() / 1000)
+
+                const base = partner_id + updatePath + timestamp + access_token + shop_id
+                const sign = crypto.createHmac("sha256", partner_key).update(base).digest("hex")
+
+                await axios.post(
+                    `https://partner.shopeemobile.com${updatePath}?partner_id=${partner_id}&timestamp=${timestamp}&access_token=${access_token}&shop_id=${shop_id}&sign=${sign}`,
+                    {
+                        item_id: Number(item_id),
+
+                        // chỉ update media
+                        image: {
+                            image_url_list: images
+                        },
+
+                        video_info: video
+                            ? [{
+                                video_url: video
+                            }]
+                            : []
+                    }
+                )
+
+                success++
+                console.log("✅ updated:", item_id)
+
+            } catch (e) {
+                fail++
+                console.log("❌ fail:", e.response?.data || e.message)
+            }
+        })
+
+        await runWithLimit(tasks, 3)
+
+        res.json({
+            success,
+            fail,
+            total: Object.keys(items).length
+        })
+
+    } catch (e) {
+        res.json({ error: e.message })
+    }
+})
 /* ================== START ================== */
 
 app.listen(PORT, () => {

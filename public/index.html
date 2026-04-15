@@ -263,44 +263,54 @@
             log("Error: " + e.message)
         }
     }
-    document.getElementById("jsonFile").onchange = async function(){
+    document.getElementById("jsonFile").onchange = async function () {
         const file = this.files[0]
-        if(!file) return
+        if (!file) return
 
-        // 👉 đọc file trực tiếp
         const text = await file.text()
 
-        try{
+        try {
+            const json = JSON.parse(text)
 
-            const ids = JSON.parse(text)
+            // ===== MODE UPDATE ITEM (NEW) =====
+            if (updateMode === "item") {
 
-            // ===== MODE UPDATE IMAGE =====
-            if(updateMode){
+                log("📦 Updating item media (image + video)...")
+                log("Total items: " + Object.keys(json).length)
 
-                updateItemIds = ids
+                const res = await fetch("/update_item_media", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify(json)
+                })
 
-                log("Loaded item IDs: " + ids.length)
-                log("Enter new image URL:")
+                const data = await res.json()
 
+                log("✅ Done:")
+                log(JSON.stringify(data, null, 2))
+
+                updateMode = false
                 return
             }
 
-            // ===== MODE CŨ (get_item_base) =====
+            // ===== MODE CŨ: get_item_base =====
             const form = new FormData()
             form.append("file", file)
 
             log("Processing items...")
 
-            const res = await fetch("/get_item_base",{
-                method:"POST",
-                body:form
+            const res = await fetch("/get_item_base", {
+                method: "POST",
+                body: form
             })
 
             const data = await res.json()
 
-            log(JSON.stringify(data,null,2))
+            log(JSON.stringify(data, null, 2))
 
-        }catch(e){
+        } catch (e) {
             log("❌ Invalid JSON file")
         }
     }
@@ -349,6 +359,11 @@
                 log("Opening Shopee authorization...")
                 window.open("/connect")
 
+            }
+            else if(command==="update_item"){
+                log("Upload JSON file (update image + video)...")
+                updateMode = "item"
+                document.getElementById("jsonFile").click()
             }
             else if(command==="update_image"){
                 log("Upload JSON file (item_id list)...")
