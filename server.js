@@ -653,6 +653,8 @@ app.post("/upload_image", upload.single("image"), async (req, res) => {
             return res.json({ error: "No file uploaded" })
         }
 
+        console.log("FILE:", req.file) // 👈 check
+
         const pathApi = "/api/v2/media_space/upload_image"
         const timestamp = Math.floor(Date.now() / 1000)
 
@@ -671,26 +673,19 @@ app.post("/upload_image", upload.single("image"), async (req, res) => {
         const url = `https://partner.shopeemobile.com${pathApi}?partner_id=${partner_id}&timestamp=${timestamp}&access_token=${access_token}&shop_id=${shop_id}&sign=${signStr}`
 
         const result = await axios.post(url, form, {
-            headers: form.getHeaders(),
-            maxContentLength: Infinity,
-            maxBodyLength: Infinity
+            headers: {
+                ...form.getHeaders()
+            },
+            maxBodyLength: Infinity,
+            maxContentLength: Infinity
         })
 
         fs.unlinkSync(req.file.path)
 
-        const data = result.data
+        console.log("RESPONSE:", result.data)
 
-        if (data.error) {
-            return res.json({
-                success: false,
-                error: data
-            })
-        }
-
-        const list = data?.response?.image_info?.image_url_list || []
-
+        const list = result.data?.response?.image_info?.image_url_list || []
         const vn = list.find(i => i.image_url_region === "VN")
-
         const image_url = vn?.image_url || list[0]?.image_url || ""
 
         res.json({
@@ -703,6 +698,7 @@ app.post("/upload_image", upload.single("image"), async (req, res) => {
         console.log("ERROR:", e.response?.data || e.message)
 
         res.json({
+            success: false,
             error: e.response?.data || e.message
         })
     }
