@@ -786,58 +786,79 @@ app.get("/download_json", (req, res) => {
 })
 
 
-app.post("/update_item_media", async (req, res) => {
+app.post("/update_items_image", async (req, res) => {
     try {
-        const items = req.body
-        if (!items) return res.json({ error: "Missing data" })
+        const { item_ids, image_url } = req.body
+
+        if (!item_ids || !image_url) {
+            return res.json({ error: "Missing params" })
+        }
 
         const updatePath = "/api/v2/product/update_item"
 
         let success = 0
         let fail = 0
 
-        const tasks = Object.values(items).map(item => async () => {
+        const tasks = item_ids.map(item_id => async () => {
             try {
                 const timestamp = Math.floor(Date.now() / 1000)
 
                 const base = partner_id + updatePath + timestamp + access_token + shop_id
-                const sign = crypto.createHmac("sha256", partner_key).update(base).digest("hex")
+                const sign = crypto
+                    .createHmac("sha256", partner_key)
+                    .update(base)
+                    .digest("hex")
+
+                const url = `https://partner.shopeemobile.com${updatePath}`
 
                 const payload = {
-                    item_id: Number(item.item_id),
+                    item_id: Number(item_id),
                     image: {
-                        image_url_list: item.images || []
-                    },
-                    video_info: item.video_url
-                        ? [{ video_url: item.video_url }]
-                        : []
+                        image_url_list: [image_url]
+                    }
                 }
 
                 const result = await axios.post(
-                    `https://partner.shopeemobile.com${updatePath}?partner_id=${partner_id}&timestamp=${timestamp}&access_token=${access_token}&shop_id=${shop_id}&sign=${sign}`,
-                    payload
+                    url,
+                    payload,
+                    {
+                        params: {
+                            partner_id,
+                            timestamp,
+                            access_token,
+                            shop_id,
+                            sign
+                        }
+                    }
                 )
 
-                console.log("SHOPEE RESPONSE:", result.data)
+                console.log("👉 SHOPEE RESPONSE:", JSON.stringify(result.data, null, 2))
 
-                success++
+                // 🔥 check đúng chuẩn Shopee
+                if (result.data?.error === 0) {
+                    success++
+                    console.log("✅ UPDATE OK:", item_id)
+                } else {
+                    fail++
+                    console.log("❌ UPDATE FAIL:", item_id, result.data)
+                }
 
             } catch (e) {
                 fail++
-                console.log("❌ FAIL:", e.response?.data || e.message)
+                console.log("❌ ERROR:", item_id, e.response?.data || e.message)
             }
         })
 
         await runWithLimit(tasks, 3)
 
-        return res.json({
+        res.json({
             success,
             fail,
-            total: Object.keys(items).length
+            total: item_ids.length
         })
 
     } catch (e) {
-        return res.json({ error: e.message })
+        res.json({ error: e.message })
     }
 })
 /* ================== START ================== */
