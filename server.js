@@ -676,13 +676,24 @@ app.post("/upload_image", upload.single("image"), async (req, res) => {
 
         fs.unlinkSync(req.file.path)
 
-        console.log("SHOPEE RESPONSE:", result.data)
+        const data = result.data
 
-        const image_url = result.data?.response?.image_url
+        if (data.error) {
+            return res.json({
+                success: false,
+                error: data
+            })
+        }
+
+        const list = data?.response?.image_info?.image_url_list || []
+
+        const vn = list.find(i => i.image_url_region === "VN")
+
+        const image_url = vn?.image_url || list[0]?.image_url || ""
 
         res.json({
             success: true,
-            url: image_url || null
+            url: image_url
         })
 
     } catch (e) {
