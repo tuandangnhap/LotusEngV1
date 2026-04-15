@@ -644,6 +644,8 @@ app.post("/get_item_base", upload.single("file"), async (req, res) => {
     }
 })
 
+const FormData = require("form-data")
+
 app.post("/upload_image", upload.single("image"), async (req, res) => {
     try {
 
@@ -660,36 +662,33 @@ app.post("/upload_image", upload.single("image"), async (req, res) => {
             .update(base)
             .digest("hex")
 
-        // đọc file
-        const fileData = fs.readFileSync(req.file.path)
+        const form = new FormData()
 
-        // convert base64
-        const base64Image = fileData.toString("base64")
+        form.append("file", fs.createReadStream(req.file.path))
 
-        const result = await axios.post(
-            `https://partner.shopeemobile.com${pathApi}`,
-            {
-                partner_id,
-                shop_id,
-                access_token,
-                timestamp,
-                sign: signStr,
-                image: base64Image
-            }
-        )
+        const url = `https://partner.shopeemobile.com${pathApi}?partner_id=${partner_id}&timestamp=${timestamp}&access_token=${access_token}&shop_id=${shop_id}&sign=${signStr}`
 
-        // xoá file temp
+        const result = await axios.post(url, form, {
+            headers: form.getHeaders(),
+            maxContentLength: Infinity,
+            maxBodyLength: Infinity
+        })
+
         fs.unlinkSync(req.file.path)
 
-        const image_url = result.data?.response?.image_url || ""
+        console.log("SHOPEE RESPONSE:", result.data)
+
+        const image_url = result.data?.response?.image_url
 
         res.json({
             success: true,
-            url: image_url
+            url: image_url || null
         })
 
     } catch (e) {
-        console.log(e.response?.data || e.message)
+
+        console.log("ERROR:", e.response?.data || e.message)
+
         res.json({
             error: e.response?.data || e.message
         })
