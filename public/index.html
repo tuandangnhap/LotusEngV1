@@ -137,6 +137,7 @@
 </div>
 
 <input type="file" id="jsonFile" hidden>
+<input type="file" id="imageFile" accept="image/*" hidden>
 <script>
 
     let eventSource = null
@@ -170,6 +171,37 @@
 
         a.click()
 
+    }
+    document.getElementById("imageFile").onchange = async function(){
+
+        const file = this.files[0]
+        if (!file) return
+
+        const form = new FormData()
+        form.append("image", file)
+
+        log("Uploading image...")
+
+        try{
+
+            const res = await fetch("/upload_image",{
+                method:"POST",
+                body:form
+            })
+
+            const data = await res.json()
+
+            if(data.url){
+                log("✅ Upload success:")
+                log(data.url)
+            }else{
+                log("❌ Upload failed:")
+                log(JSON.stringify(data))
+            }
+
+        }catch(e){
+            log("ERROR: " + e.message)
+        }
     }
     let currentPart = 0
     let totalParts = 0
@@ -277,6 +309,12 @@
                 log("Upload JSON file containing item_id list...")
 
                 document.getElementById("jsonFile").click()
+
+            }
+            else if(command==="up_image"){
+
+                log("Select image to upload...")
+                document.getElementById("imageFile").click()
 
             }
 

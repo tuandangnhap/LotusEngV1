@@ -644,6 +644,58 @@ app.post("/get_item_base", upload.single("file"), async (req, res) => {
     }
 })
 
+app.post("/upload_image", upload.single("image"), async (req, res) => {
+    try {
+
+        if (!req.file) {
+            return res.json({ error: "No file uploaded" })
+        }
+
+        const pathApi = "/api/v2/media_space/upload_image"
+        const timestamp = Math.floor(Date.now() / 1000)
+
+        const base = partner_id + pathApi + timestamp + access_token + shop_id
+        const signStr = crypto
+            .createHmac("sha256", partner_key)
+            .update(base)
+            .digest("hex")
+
+        // đọc file
+        const fileData = fs.readFileSync(req.file.path)
+
+        // convert base64
+        const base64Image = fileData.toString("base64")
+
+        const result = await axios.post(
+            `https://partner.shopeemobile.com${pathApi}`,
+            {
+                partner_id,
+                shop_id,
+                access_token,
+                timestamp,
+                sign: signStr,
+                image: base64Image
+            }
+        )
+
+        // xoá file temp
+        fs.unlinkSync(req.file.path)
+
+        const image_url = result.data?.response?.image_url || ""
+
+        res.json({
+            success: true,
+            url: image_url
+        })
+
+    } catch (e) {
+        console.log(e.response?.data || e.message)
+        res.json({
+            error: e.response?.data || e.message
+        })
+    }
+})
+
 /* ================== START ================== */
 
 app.listen(PORT, () => {
