@@ -816,7 +816,13 @@ app.post("/update_item_media", async (req, res) => {
 
                 const payload = {
                     item_id: Number(item.item_id),
-                    video_upload_id: formatVideoId(item.video_url)
+                    video_info: item.video_upload_id
+                        ? [
+                            {
+                                video_upload_id: formatVideoId(item.video_upload_id)
+                            }
+                        ]
+                        : []
                 }
 
                 const result = await axios.post(
