@@ -819,7 +819,7 @@ app.post("/update_item_media", async (req, res) => {
                     video_info: item.video_upload_id
                         ? [
                             {
-                                video_upload_id: formatVideoId(item.video_upload_id)
+                                video_upload_id: item.video_upload_id
                             }
                         ]
                         : []
