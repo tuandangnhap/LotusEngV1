@@ -883,12 +883,23 @@ app.post("/update_item_media", async (req, res) => {
                     contentType: "video/mp4"
                 })
 
-                await axios.put(upload_url, videoBuffer, {
+                const videoStream = await axios({
+                    url: videoUrl,
+                    method: "GET",
+                    responseType: "stream",
+                    timeout: 0
+                })
+
+                await axios({
+                    method: "PUT",
+                    url: upload_url,
+                    data: videoStream.data,
                     headers: {
                         "Content-Type": "application/octet-stream"
                     },
                     maxBodyLength: Infinity,
-                    timeout: 0
+                    maxContentLength: Infinity,
+                    transformRequest: [(data) => data] // 🔥 cực kỳ quan trọng
                 })
 
                 console.log("✅ Upload done")
