@@ -795,64 +795,194 @@ app.get("/download_json", (req, res) => {
         res.json({ error: e.message })
     }
 })
-
-
+/* ================== START ================== */
 app.post("/update_item_media", async (req, res) => {
     try {
+
         const items = req.body
-        if (!items) return res.json({ error: "Missing data" })
+        const results = []
 
-        const updatePath = "/api/v2/product/update_item"
+        for (const key of Object.keys(items)) {
 
-        let success = 0
-        let fail = 0
+            const item = items[key]
 
-        const tasks = Object.values(items).map(item => async () => {
             try {
-                const timestamp = Math.floor(Date.now() / 1000)
 
-                const base = partner_id + updatePath + timestamp + access_token + shop_id
-                const sign = crypto.createHmac("sha256", partner_key).update(base).digest("hex")
+                console.log("🚀 Processing:", item.item_id)
 
-                const payload = {
-                    item_id: Number(item.item_id),
-                    video_info: item.video_upload_id
-                        ? [
-                            {
-                                video_upload_id: item.video_upload_id
-                            }
-                        ]
-                        : []
+                if (!item.video_url) {
+                    console.log("⚠️ No video, skip")
+                    continue
                 }
 
-                const result = await axios.post(
-                    `https://partner.shopeemobile.com${updatePath}?partner_id=${partner_id}&timestamp=${timestamp}&access_token=${access_token}&shop_id=${shop_id}&sign=${sign}`,
-                    payload
+                // =========================
+                // 1. DOWNLOAD VIDEO
+                // =========================
+                console.log("⬇️ Download:", item.video_url)
+
+                const videoRes = await axios({
+                    url: item.video_url,
+                    method: "GET",
+                    responseType: "arraybuffer",
+                    timeout: 0
+                })
+
+                const videoBuffer = videoRes.data
+
+                // =========================
+                // 2. INIT VIDEO
+                // =========================
+                const initPath = "/api/v2/media_space/init_video_upload"
+                const timestamp = Math.floor(Date.now() / 1000)
+
+                const base = partner_id + initPath + timestamp + access_token + shop_id
+                const sign = crypto.createHmac("sha256", partner_key).update(base).digest("hex")
+
+                const initRes = await axios.post(
+                    `https://partner.shopeemobile.com${initPath}`,
+                    {
+                        file_size: videoBuffer.length
+                    },
+                    {
+                        params: {
+                            partner_id,
+                            timestamp,
+                            access_token,
+                            shop_id,
+                            sign
+                        }
+                    }
                 )
 
-                console.log("SHOPEE RESPONSE:", result.data)
+                const upload_url = initRes.data.response.upload_url
+                const video_id = initRes.data.response.video_id
 
-                success++
+                // =========================
+                // 3. UPLOAD VIDEO
+                // =========================
+                console.log("⬆️ Uploading...")
+
+                await axios.put(upload_url, videoBuffer, {
+                    headers: { "Content-Type": "video/mp4" },
+                    maxBodyLength: Infinity
+                })
+
+                // =========================
+                // 4. COMPLETE
+                // =========================
+                const completePath = "/api/v2/media_space/complete_video_upload"
+                const timestamp2 = Math.floor(Date.now() / 1000)
+
+                const base2 = partner_id + completePath + timestamp2 + access_token + shop_id
+                const sign2 = crypto.createHmac("sha256", partner_key).update(base2).digest("hex")
+
+                await axios.post(
+                    `https://partner.shopeemobile.com${completePath}`,
+                    { video_id },
+                    {
+                        params: {
+                            partner_id,
+                            timestamp: timestamp2,
+                            access_token,
+                            shop_id,
+                            sign: sign2
+                        }
+                    }
+                )
+
+                // =========================
+                // 5. GET RESULT (WAIT READY)
+                // =========================
+                const resultPath = "/api/v2/media_space/get_video_upload_result"
+
+                let ready = false
+                let retries = 15
+
+                while (!ready && retries-- > 0) {
+
+                    await sleep(2000)
+
+                    const timestamp3 = Math.floor(Date.now() / 1000)
+
+                    const base3 = partner_id + resultPath + timestamp3 + access_token + shop_id
+                    const sign3 = crypto.createHmac("sha256", partner_key).update(base3).digest("hex")
+
+                    const resultRes = await axios.get(
+                        `https://partner.shopeemobile.com${resultPath}`,
+                        {
+                            params: {
+                                partner_id,
+                                shop_id,
+                                access_token,
+                                timestamp: timestamp3,
+                                sign: sign3,
+                                video_id
+                            }
+                        }
+                    )
+
+                    const status = resultRes.data.response.video_status
+                    console.log("🎬 Status:", status)
+
+                    if (status === "NORMAL") {
+                        ready = true
+                    }
+                }
+
+                if (!ready) {
+                    throw new Error("Video not ready")
+                }
+
+                // =========================
+                // 6. UPDATE ITEM (VIDEO ONLY)
+                // =========================
+                const updatePath = "/api/v2/product/update_item"
+                const timestamp4 = Math.floor(Date.now() / 1000)
+
+                const base4 = partner_id + updatePath + timestamp4 + access_token + shop_id
+                const sign4 = crypto.createHmac("sha256", partner_key).update(base4).digest("hex")
+
+                await axios.post(
+                    `https://partner.shopeemobile.com${updatePath}`,
+                    {
+                        item_id: item.item_id,
+                        video_info: [{ video_id }]
+                    },
+                    {
+                        params: {
+                            partner_id,
+                            timestamp: timestamp4,
+                            access_token,
+                            shop_id,
+                            sign: sign4
+                        }
+                    }
+                )
+
+                console.log("✅ DONE:", item.item_id)
+
+                results.push({
+                    item_id: item.item_id,
+                    success: true
+                })
 
             } catch (e) {
-                fail++
-                console.log("❌ FAIL:", e.response?.data || e.message)
+                console.log("❌ ERROR:", item.item_id, e.response?.data || e.message)
+
+                results.push({
+                    item_id: item.item_id,
+                    success: false,
+                    error: e.message
+                })
             }
-        })
+        }
 
-        await runWithLimit(tasks, 3)
-
-        return res.json({
-            success,
-            fail,
-            total: Object.keys(items).length
-        })
+        res.json(results)
 
     } catch (e) {
-        return res.json({ error: e.message })
+        res.json({ error: e.message })
     }
 })
-/* ================== START ================== */
 
 app.listen(PORT, () => {
     console.log("Server running http://localhost:" + PORT)
