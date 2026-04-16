@@ -883,8 +883,10 @@ app.post("/update_item_media", async (req, res) => {
                     contentType: "video/mp4"
                 })
 
-                await axios.post(upload_url, form, {
-                    headers: form.getHeaders(),
+                await axios.put(upload_url, videoBuffer, {
+                    headers: {
+                        "Content-Type": "application/octet-stream"
+                    },
                     maxBodyLength: Infinity
                 })
 
