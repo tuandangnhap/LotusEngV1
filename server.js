@@ -36,6 +36,17 @@ function sign(path, timestamp) {
         .digest("hex")
 }
 
+function formatVideoId(url) {
+    if (!url) return ""
+
+    return url
+        .split("/")
+        .pop()                // lấy filename
+        .replace(".mp4", "") // bỏ đuôi
+        .replace(/\./g, "_") // . -> _
+        .replace("vn-", "vn_") // vn- -> vn_
+}
+
 // chunk array
 function chunkArray(arr, size) {
     const result = []
@@ -805,9 +816,7 @@ app.post("/update_item_media", async (req, res) => {
 
                 const payload = {
                     item_id: Number(item.item_id),
-                    image: {
-                        image_url_list: item.images || []
-                    }
+                    video_upload_id: formatVideoId(item.video_url)
                 }
 
                 const result = await axios.post(
