@@ -799,6 +799,7 @@ app.get("/download_json", (req, res) => {
 app.post("/update_item_media", async (req, res) => {
     try {
 
+        const FormData = require("form-data")
         const items = req.body
         const results = []
 
@@ -816,18 +817,32 @@ app.post("/update_item_media", async (req, res) => {
                 }
 
                 // =========================
-                // 1. DOWNLOAD VIDEO
+                // 1. FIX URL + DOWNLOAD
                 // =========================
-                console.log("⬇️ Download:", item.video_url)
+                let videoUrl = item.video_url
+
+                // fallback domain
+                videoUrl = videoUrl.replace("cvf.shopee.vn", "cf.shopee.vn")
+
+                console.log("⬇️ Download:", videoUrl)
 
                 const videoRes = await axios({
-                    url: item.video_url,
+                    url: videoUrl,
                     method: "GET",
                     responseType: "arraybuffer",
-                    timeout: 0
+                    timeout: 0,
+                    headers: {
+                        "User-Agent": "Mozilla/5.0"
+                    }
                 })
 
                 const videoBuffer = videoRes.data
+
+                if (!videoBuffer || videoBuffer.byteLength < 10000) {
+                    throw new Error("Invalid video (too small or empty)")
+                }
+
+                console.log("📦 Size:", videoBuffer.byteLength)
 
                 // =========================
                 // 2. INIT VIDEO
@@ -840,9 +855,7 @@ app.post("/update_item_media", async (req, res) => {
 
                 const initRes = await axios.post(
                     `https://partner.shopeemobile.com${initPath}`,
-                    {
-                        file_size: videoBuffer.length
-                    },
+                    { file_size: videoBuffer.length },
                     {
                         params: {
                             partner_id,
@@ -854,18 +867,28 @@ app.post("/update_item_media", async (req, res) => {
                     }
                 )
 
+                console.log("INIT RES:", initRes.data)
+
                 const upload_url = initRes.data.response.upload_url
                 const video_id = initRes.data.response.video_id
 
                 // =========================
-                // 3. UPLOAD VIDEO
+                // 3. UPLOAD VIDEO (FIX CHÍNH)
                 // =========================
-                console.log("⬆️ Uploading...")
+                console.log("⬆️ Uploading multipart...")
 
-                await axios.put(upload_url, videoBuffer, {
-                    headers: { "Content-Type": "video/mp4" },
+                const form = new FormData()
+                form.append("file", videoBuffer, {
+                    filename: "video.mp4",
+                    contentType: "video/mp4"
+                })
+
+                await axios.post(upload_url, form, {
+                    headers: form.getHeaders(),
                     maxBodyLength: Infinity
                 })
+
+                console.log("✅ Upload done")
 
                 // =========================
                 // 4. COMPLETE
@@ -890,8 +913,10 @@ app.post("/update_item_media", async (req, res) => {
                     }
                 )
 
+                console.log("📦 Complete done")
+
                 // =========================
-                // 5. GET RESULT (WAIT READY)
+                // 5. WAIT RESULT
                 // =========================
                 const resultPath = "/api/v2/media_space/get_video_upload_result"
 
@@ -934,7 +959,7 @@ app.post("/update_item_media", async (req, res) => {
                 }
 
                 // =========================
-                // 6. UPDATE ITEM (VIDEO ONLY)
+                // 6. UPDATE ITEM
                 // =========================
                 const updatePath = "/api/v2/product/update_item"
                 const timestamp4 = Math.floor(Date.now() / 1000)
@@ -967,12 +992,13 @@ app.post("/update_item_media", async (req, res) => {
                 })
 
             } catch (e) {
-                console.log("❌ ERROR:", item.item_id, e.response?.data || e.message)
+
+                console.log("❌ FULL ERROR:", JSON.stringify(e.response?.data, null, 2) || e.message)
 
                 results.push({
                     item_id: item.item_id,
                     success: false,
-                    error: e.message
+                    error: e.response?.data || e.message
                 })
             }
         }
