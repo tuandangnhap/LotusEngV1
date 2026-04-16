@@ -887,7 +887,8 @@ app.post("/update_item_media", async (req, res) => {
                     headers: {
                         "Content-Type": "application/octet-stream"
                     },
-                    maxBodyLength: Infinity
+                    maxBodyLength: Infinity,
+                    timeout: 0
                 })
 
                 console.log("✅ Upload done")
