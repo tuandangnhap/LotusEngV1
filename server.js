@@ -799,7 +799,6 @@ app.get("/download_json", (req, res) => {
 app.post("/update_item_media", async (req, res) => {
     try {
 
-        const FormData = require("form-data")
         const items = req.body
         const results = []
 
@@ -817,23 +816,16 @@ app.post("/update_item_media", async (req, res) => {
                 }
 
                 // =========================
-                // 1. FIX URL + DOWNLOAD
+                // 1. DOWNLOAD VIDEO (1 lần duy nhất)
                 // =========================
-                let videoUrl = item.video_url
-
-                // fallback domain
-                videoUrl = videoUrl.replace("cvf.shopee.vn", "cf.shopee.vn")
-
+                const videoUrl = item.video_url
                 console.log("⬇️ Download:", videoUrl)
 
                 const videoRes = await axios({
                     url: videoUrl,
                     method: "GET",
                     responseType: "arraybuffer",
-                    timeout: 0,
-                    headers: {
-                        "User-Agent": "Mozilla/5.0"
-                    }
+                    timeout: 30000
                 })
 
                 const videoBuffer = videoRes.data
@@ -850,8 +842,10 @@ app.post("/update_item_media", async (req, res) => {
                 const initPath = "/api/v2/media_space/init_video_upload"
                 const timestamp = Math.floor(Date.now() / 1000)
 
-                const base = partner_id + initPath + timestamp + access_token + shop_id
-                const sign = crypto.createHmac("sha256", partner_key).update(base).digest("hex")
+                const signInit = crypto
+                    .createHmac("sha256", partner_key)
+                    .update(partner_id + initPath + timestamp + access_token + shop_id)
+                    .digest("hex")
 
                 const initRes = await axios.post(
                     `https://partner.shopeemobile.com${initPath}`,
@@ -862,45 +856,40 @@ app.post("/update_item_media", async (req, res) => {
                             timestamp,
                             access_token,
                             shop_id,
-                            sign
-                        }
+                            sign: signInit
+                        },
+                        timeout: 15000
                     }
                 )
 
-                console.log("INIT RES:", initRes.data)
+                console.log("INIT RES:", JSON.stringify(initRes.data))
 
-                const upload_url = initRes.data.response.upload_url
-                const video_id = initRes.data.response.video_id
+                const upload_url = initRes.data?.response?.upload_url
+                const video_id = initRes.data?.response?.video_id
+
+                if (!upload_url || !video_id) {
+                    throw new Error("Init video failed")
+                }
 
                 // =========================
-                // 3. UPLOAD VIDEO (FIX CHÍNH)
+                // 3. UPLOAD VIDEO (FIX CHUẨN)
                 // =========================
-                console.log("⬆️ Uploading multipart...")
+                console.log("⬆️ Uploading...")
 
-                const form = new FormData()
-                form.append("file", videoBuffer, {
-                    filename: "video.mp4",
-                    contentType: "video/mp4"
-                })
-
-                const videoStream = await axios({
-                    url: videoUrl,
-                    method: "GET",
-                    responseType: "stream",
-                    timeout: 0
-                })
-
-                await axios({
-                    method: "PUT",
-                    url: upload_url,
-                    data: videoStream.data,
-                    headers: {
-                        "Content-Type": "application/octet-stream"
-                    },
-                    maxBodyLength: Infinity,
-                    maxContentLength: Infinity,
-                    transformRequest: [(data) => data] // 🔥 cực kỳ quan trọng
-                })
+                await retry(() =>
+                        axios({
+                            method: "PUT",
+                            url: upload_url,
+                            data: videoBuffer,
+                            headers: {
+                                "Content-Type": "application/octet-stream"
+                            },
+                            maxBodyLength: Infinity,
+                            maxContentLength: Infinity,
+                            timeout: 60000
+                        }),
+                    3
+                )
 
                 console.log("✅ Upload done")
 
@@ -910,8 +899,10 @@ app.post("/update_item_media", async (req, res) => {
                 const completePath = "/api/v2/media_space/complete_video_upload"
                 const timestamp2 = Math.floor(Date.now() / 1000)
 
-                const base2 = partner_id + completePath + timestamp2 + access_token + shop_id
-                const sign2 = crypto.createHmac("sha256", partner_key).update(base2).digest("hex")
+                const signComplete = crypto
+                    .createHmac("sha256", partner_key)
+                    .update(partner_id + completePath + timestamp2 + access_token + shop_id)
+                    .digest("hex")
 
                 await axios.post(
                     `https://partner.shopeemobile.com${completePath}`,
@@ -922,8 +913,9 @@ app.post("/update_item_media", async (req, res) => {
                             timestamp: timestamp2,
                             access_token,
                             shop_id,
-                            sign: sign2
-                        }
+                            sign: signComplete
+                        },
+                        timeout: 15000
                     }
                 )
 
@@ -943,8 +935,10 @@ app.post("/update_item_media", async (req, res) => {
 
                     const timestamp3 = Math.floor(Date.now() / 1000)
 
-                    const base3 = partner_id + resultPath + timestamp3 + access_token + shop_id
-                    const sign3 = crypto.createHmac("sha256", partner_key).update(base3).digest("hex")
+                    const signResult = crypto
+                        .createHmac("sha256", partner_key)
+                        .update(partner_id + resultPath + timestamp3 + access_token + shop_id)
+                        .digest("hex")
 
                     const resultRes = await axios.get(
                         `https://partner.shopeemobile.com${resultPath}`,
@@ -954,17 +948,22 @@ app.post("/update_item_media", async (req, res) => {
                                 shop_id,
                                 access_token,
                                 timestamp: timestamp3,
-                                sign: sign3,
+                                sign: signResult,
                                 video_id
-                            }
+                            },
+                            timeout: 15000
                         }
                     )
 
-                    const status = resultRes.data.response.video_status
+                    const status = resultRes.data?.response?.video_status
                     console.log("🎬 Status:", status)
 
                     if (status === "NORMAL") {
                         ready = true
+                    }
+
+                    if (status === "FAILED") {
+                        throw new Error("Shopee xử lý video FAILED")
                     }
                 }
 
@@ -978,8 +977,10 @@ app.post("/update_item_media", async (req, res) => {
                 const updatePath = "/api/v2/product/update_item"
                 const timestamp4 = Math.floor(Date.now() / 1000)
 
-                const base4 = partner_id + updatePath + timestamp4 + access_token + shop_id
-                const sign4 = crypto.createHmac("sha256", partner_key).update(base4).digest("hex")
+                const signUpdate = crypto
+                    .createHmac("sha256", partner_key)
+                    .update(partner_id + updatePath + timestamp4 + access_token + shop_id)
+                    .digest("hex")
 
                 await axios.post(
                     `https://partner.shopeemobile.com${updatePath}`,
@@ -993,8 +994,9 @@ app.post("/update_item_media", async (req, res) => {
                             timestamp: timestamp4,
                             access_token,
                             shop_id,
-                            sign: sign4
-                        }
+                            sign: signUpdate
+                        },
+                        timeout: 15000
                     }
                 )
 
@@ -1007,7 +1009,7 @@ app.post("/update_item_media", async (req, res) => {
 
             } catch (e) {
 
-                console.log("❌ FULL ERROR:", JSON.stringify(e.response?.data, null, 2) || e.message)
+                console.log("❌ ERROR:", e.response?.data || e.message)
 
                 results.push({
                     item_id: item.item_id,
