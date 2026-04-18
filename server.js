@@ -1021,15 +1021,12 @@ app.post("/update_item_media", async (req, res) => {
 
                     const responseData = resData?.response
 
-                    const status =
-                        responseData?.video_info?.status ||
-                        responseData?.status
-
-                    video_id = responseData?.video_info?.video_id
+                    const status = resData?.response?.status
+                    video_id = resData?.response?.video_info?.video_id
 
                     console.log("🎬 Status:", status)
 
-                    if (status === "SUCCEEDED") {
+                    if (status === "SUCCEEDED" && video_id) {
                         ready = true
                         break
                     }
