@@ -958,12 +958,15 @@ app.post("/update_item_media", async (req, res) => {
                 // =========================
                 // 5. WAIT RESULT
                 // =========================
+                // =========================
+// 5. WAIT RESULT (FIX)
+// =========================
                 const resultPath = "/api/v2/media_space/get_video_upload_result"
 
                 let ready = false
                 let video_id = null
 
-                for (let i = 0; i < 15; i++) {
+                for (let i = 0; i < 30; i++) { // ⬅️ tăng lên 60s
 
                     await sleep(2000)
 
@@ -988,8 +991,19 @@ app.post("/update_item_media", async (req, res) => {
                         }
                     )
 
-                    const status = resultRes.data?.response?.video_status
-                    video_id = resultRes.data?.response?.video_id
+                    const resData = resultRes.data
+
+                    console.log("RESULT RAW:", JSON.stringify(resData))
+
+                    // ❗ check lỗi từ Shopee
+                    if (resData.error) {
+                        throw new Error(resData.message || "Shopee error")
+                    }
+
+                    const videoInfo = resData?.response?.video_info
+
+                    const status = videoInfo?.status
+                    video_id = videoInfo?.video_id
 
                     console.log("🎬 Status:", status)
 
