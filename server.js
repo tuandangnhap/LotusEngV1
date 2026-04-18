@@ -1,5 +1,8 @@
 const express = require("express")
 const axios = require("axios")
+const ffmpeg = require("fluent-ffmpeg")
+const ffmpegPath = require("ffmpeg-static")
+ffmpeg.setFfmpegPath(ffmpegPath)
 const crypto = require("crypto")
 const path = require("path")
 const multer = require("multer")
@@ -36,15 +39,27 @@ function sign(path, timestamp) {
         .digest("hex")
 }
 
-function formatVideoId(url) {
-    if (!url) return ""
-
-    return url
-        .split("/")
-        .pop()                // lấy filename
-        .replace(".mp4", "") // bỏ đuôi
-        .replace(/\./g, "_") // . -> _
-        .replace("vn-", "vn_") // vn- -> vn_
+function trimVideo(inputPath, outputPath) {
+    return new Promise((resolve, reject) => {
+        ffmpeg(inputPath)
+            .setStartTime(0)
+            .setDuration(60)
+            .outputOptions([
+                "-c:v libx264",
+                "-c:a aac",
+                "-pix_fmt yuv420p",
+                "-movflags +faststart"
+            ])
+            .save(outputPath)
+            .on("end", () => {
+                console.log("✂️ Trim done")
+                resolve(outputPath)
+            })
+            .on("error", (err) => {
+                console.log("FFMPEG ERROR:", err)
+                reject(err)
+            })
+    })
 }
 
 // chunk array
@@ -818,14 +833,41 @@ app.post("/update_item_media", async (req, res) => {
                 // =========================
                 // 1. DOWNLOAD
                 // =========================
-                const videoRes = await axios({
+                const tempInput = `/tmp/input_${item.item_id}.mp4`
+                const tempOutput = `/tmp/output_${item.item_id}.mp4`
+
+// download về file
+                const response = await axios({
                     url: item.video_url,
                     method: "GET",
-                    responseType: "arraybuffer",
+                    responseType: "stream",
                     timeout: 120000
                 })
 
-                const videoBuffer = Buffer.from(videoRes.data)
+                await new Promise((resolve, reject) => {
+                    const writer = fs.createWriteStream(tempInput)
+                    response.data.pipe(writer)
+                    writer.on("finish", resolve)
+                    writer.on("error", reject)
+                })
+
+                let finalPath = tempInput
+
+// =========================
+// CHECK FILE SIZE (quick rule)
+// =========================
+                const stat = fs.statSync(tempInput)
+                console.log("📦 File size:", stat.size)
+
+// 👉 nếu >60s thường size > ~10MB → cắt luôn cho chắc
+                if (stat.size > 10 * 1024 * 1024) {
+                    console.log("✂️ Auto trim video...")
+                    await trimVideo(tempInput, tempOutput)
+                    finalPath = tempOutput
+                }
+
+// đọc lại buffer
+                const videoBuffer = fs.readFileSync(finalPath)
 
                 if (!videoBuffer || videoBuffer.length < 10000) {
                     throw new Error("Invalid video")
@@ -864,6 +906,8 @@ app.post("/update_item_media", async (req, res) => {
                 console.log("INIT:", JSON.stringify(initRes.data))
 
                 const video_upload_id = initRes.data?.response?.video_upload_id
+                fs.unlinkSync(tempInput)
+                if (fs.existsSync(tempOutput)) fs.unlinkSync(tempOutput)
 
                 if (!video_upload_id) {
                     throw new Error("Init fail")
