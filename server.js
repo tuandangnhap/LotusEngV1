@@ -975,9 +975,8 @@ app.post("/update_item_media", async (req, res) => {
                 const resultPath = "/api/v2/media_space/get_video_upload_result"
 
                 let ready = false
-                let video_id = null
 
-                for (let i = 0; i < 50; i++) { // 🔥 ~100s
+                for (let i = 0; i < 60; i++) {
 
                     await sleep(2000)
 
@@ -1004,13 +1003,11 @@ app.post("/update_item_media", async (req, res) => {
 
                     const resData = resultRes.data
 
-                    if (resData.error) {
-                        throw new Error(resData.message || "Shopee error")
-                    }
+                    console.log("RESULT RAW:", JSON.stringify(resData))
 
                     const status = resData?.response?.status
-                    const videoInfo = resData?.response?.video_info
-                    video_id = videoInfo?.video_id
+
+                    console.log("🎬 Status:", status)
 
                     if (status === "SUCCEEDED") {
                         ready = true
@@ -1022,7 +1019,7 @@ app.post("/update_item_media", async (req, res) => {
                     }
                 }
 
-                if (!ready || !video_id) {
+                if (!ready) {
                     throw new Error("Video not ready")
                 }
 
@@ -1041,7 +1038,11 @@ app.post("/update_item_media", async (req, res) => {
                     `https://partner.shopeemobile.com${updatePath}`,
                     {
                         item_id: item.item_id,
-                        video_info: [{ video_id }]
+                        video_info: [
+                            {
+                                video_upload_id: video_upload_id
+                            }
+                        ]
                     },
                     {
                         params: {
