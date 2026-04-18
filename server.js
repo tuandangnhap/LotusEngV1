@@ -872,6 +872,14 @@ app.post("/update_item_media", async (req, res) => {
 
                 console.log("INIT FULL:", JSON.stringify(initRes.data, null, 2))
 
+                // 🔥 check lỗi chuẩn
+                if (initRes.data.error) {
+                    throw new Error(
+                        `Init fail: ${initRes.data.error} - ${initRes.data.message}`
+                    )
+                }
+
+
                 const upload_url = initRes.data?.response?.upload_url
                 const video_id = initRes.data?.response?.video_id
 
