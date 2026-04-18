@@ -1058,6 +1058,8 @@ app.post("/update_item_media", async (req, res) => {
                 const updatePath = "/api/v2/product/update_item"
                 const ts5 = Math.floor(Date.now() / 1000)
 
+                console.log("id", video_upload_id)
+
                 const sign5 = crypto
                     .createHmac("sha256", partner_key)
                     .update(partner_id + updatePath + ts5 + access_token + shop_id)
