@@ -1052,6 +1052,32 @@ app.post("/update_item_media", async (req, res) => {
                         console.log("🎯 GOT VIDEO ID")
                         break
                     }
+                    const infoPath = "/api/v2/media_space/get_video_info"
+
+                    const ts = Math.floor(Date.now() / 1000)
+
+                    const sign = crypto
+                        .createHmac("sha256", partner_key)
+                        .update(partner_id + infoPath + ts + access_token + shop_id)
+                        .digest("hex")
+
+                    const infoRes = await axios.get(
+                        `https://partner.shopeemobile.com${infoPath}`,
+                        {
+                            params: {
+                                partner_id,
+                                shop_id,
+                                access_token,
+                                timestamp: ts,
+                                sign,
+                                video_upload_id   // 👈 dùng cái này
+                            }
+                        }
+                    )
+
+                    video_id = infoRes.data?.response?.video_info?.video_id
+
+                    console.log("🎯 VIDEO ID:", video_id)
 
                     if (status === "FAILED") {
                         console.log("❌ FULL:", resultRes.data)
