@@ -822,7 +822,7 @@ app.post("/update_item_media", async (req, res) => {
                     url: item.video_url,
                     method: "GET",
                     responseType: "arraybuffer",
-                    timeout: 30000
+                    timeout: 60000
                 })
 
                 const videoBuffer = videoRes.data
@@ -840,7 +840,7 @@ app.post("/update_item_media", async (req, res) => {
                 console.log("🔑 MD5:", md5)
 
                 // =========================
-                // 2. INIT (FLOW MỚI)
+                // 2. INIT
                 // =========================
                 const initPath = "/api/v2/media_space/init_video_upload"
                 const ts1 = Math.floor(Date.now() / 1000)
@@ -876,11 +876,11 @@ app.post("/update_item_media", async (req, res) => {
                 }
 
                 // =========================
-                // 3. UPLOAD PART (FULL FILE)
+                // 3. UPLOAD CHUNK
                 // =========================
                 const uploadPath = "/api/v2/media_space/upload_video_part"
 
-                const CHUNK_SIZE = 1024 * 1024 * 2 // 2MB / part (an toàn)
+                const CHUNK_SIZE = 1024 * 1024 * 2 // 2MB
                 let part_seq = 0
 
                 for (let start = 0; start < videoBuffer.length; start += CHUNK_SIZE) {
@@ -956,17 +956,14 @@ app.post("/update_item_media", async (req, res) => {
                 console.log("📦 Complete done")
 
                 // =========================
-                // 5. WAIT RESULT
+                // 5. WAIT RESULT (FIX CHUẨN)
                 // =========================
-                // =========================
-// 5. WAIT RESULT (FIX)
-// =========================
                 const resultPath = "/api/v2/media_space/get_video_upload_result"
 
                 let ready = false
                 let video_id = null
 
-                for (let i = 0; i < 30; i++) { // ⬅️ tăng lên 60s
+                for (let i = 0; i < 40; i++) { // ~80s
 
                     await sleep(2000)
 
@@ -995,15 +992,17 @@ app.post("/update_item_media", async (req, res) => {
 
                     console.log("RESULT RAW:", JSON.stringify(resData))
 
-                    // ❗ check lỗi từ Shopee
                     if (resData.error) {
                         throw new Error(resData.message || "Shopee error")
                     }
 
-                    const videoInfo = resData?.response?.video_info
+                    const responseData = resData?.response
 
-                    const status = videoInfo?.status
-                    video_id = videoInfo?.video_id
+                    const status =
+                        responseData?.video_info?.status ||
+                        responseData?.status
+
+                    video_id = responseData?.video_info?.video_id
 
                     console.log("🎬 Status:", status)
 
