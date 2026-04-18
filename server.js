@@ -1012,6 +1012,7 @@ app.post("/update_item_media", async (req, res) => {
                 const resultPath = "/api/v2/media_space/get_video_upload_result"
 
                 let ready = false
+                let video_id = null
 
                 for (let i = 0; i < 200; i++) {
 
@@ -1039,8 +1040,7 @@ app.post("/update_item_media", async (req, res) => {
                     )
 
                     const status = resultRes.data?.response?.status
-                    const video_id = resultRes.data?.response?.video_id
-
+                    video_id = resultRes.data?.response?.video_id
                     console.log(`🎬 Status [${i}]:`, status)
 
                     if (status === "SUCCEEDED") {
