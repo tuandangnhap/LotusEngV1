@@ -1048,6 +1048,7 @@ app.post("/update_item_media", async (req, res) => {
 
                     if (status === "SUCCEEDED") {
                         console.log("🎯 VIDEO READY")
+                        await sleep(5000)
                         break
                     }
                 }
