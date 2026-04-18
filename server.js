@@ -944,9 +944,15 @@ app.post("/update_item_media", async (req, res) => {
                     .update(partner_id + completePath + ts3 + access_token + shop_id)
                     .digest("hex")
 
+                // tạo danh sách part đã upload
+                const part_seq_list = Array.from({ length: part_seq }, (_, i) => i)
+
                 await axios.post(
                     `https://partner.shopeemobile.com${completePath}`,
-                    { video_upload_id },
+                    {
+                        video_upload_id,
+                        part_seq_list // 🔥 QUAN TRỌNG NHẤT
+                    },
                     {
                         params: {
                             partner_id,
