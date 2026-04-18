@@ -881,9 +881,8 @@ app.post("/update_item_media", async (req, res) => {
                 // =========================
                 // 3. UPLOAD CHUNK (FIX CHUẨN)
                 // =========================
-                const uploadPath = "/api/v2/media_space/upload_video_part"
 
-                const CHUNK_SIZE = 1024 * 1024 // 🔥 1MB (QUAN TRỌNG)
+                const CHUNK_SIZE = 1024 * 1024
                 let part_seq = 0
 
                 for (let start = 0; start < videoBuffer.length; start += CHUNK_SIZE) {
@@ -909,9 +908,8 @@ app.post("/update_item_media", async (req, res) => {
                         {
                             video_upload_id,
                             part_seq,
-                            part_size: chunk.length, // 🔥 FIX
                             content_md5: chunk_md5,
-                            content: chunk.toString("base64")
+                            part_content: chunk.toString("base64") // 🔥 FIX CHÍNH
                         },
                         {
                             params: {
@@ -922,16 +920,13 @@ app.post("/update_item_media", async (req, res) => {
                                 sign: sign2
                             },
                             headers: {
-                                "Content-Type": "application/json" // 🔥 FIX
-                            },
-                            timeout: 60000
+                                "Content-Type": "application/json"
+                            }
                         }
                     )
 
                     part_seq++
                 }
-
-                console.log("✅ Upload all parts done")
 
                 // =========================
                 // 4. COMPLETE
@@ -1018,7 +1013,7 @@ app.post("/update_item_media", async (req, res) => {
 
                     console.log("🎬 Status:", status)
 
-                    if (status === "NORMAL") {
+                    if (status === "SUCCEEDED") {
                         ready = true
                         break
                     }
