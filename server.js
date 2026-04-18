@@ -911,9 +911,14 @@ app.post("/update_item_media", async (req, res) => {
                     form.append("content_md5", chunk_md5)
 
                     // 🔥 QUAN TRỌNG NHẤT: gửi FILE thật, không phải base64
-                    form.append("part_content", chunk, {
+                    const { Readable } = require("stream")
+
+                    const stream = Readable.from(chunk)
+
+                    form.append("part_content", stream, {
                         filename: `part_${part_seq}.mp4`,
-                        contentType: "video/mp4"
+                        contentType: "video/mp4",
+                        knownLength: chunk.length
                     })
 
                     await axios.post(
