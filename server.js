@@ -860,11 +860,12 @@ app.post("/update_item_media", async (req, res) => {
                 console.log("📦 File size:", stat.size)
 
 // 👉 nếu >60s thường size > ~10MB → cắt luôn cho chắc
-                if (stat.size > 10 * 1024 * 1024) {
-                    console.log("✂️ Auto trim video...")
-                    await trimVideo(tempInput, tempOutput)
-                    finalPath = tempOutput
-                }
+                // ❌ bỏ check size
+// if (stat.size > 10MB)
+
+                console.log("✂️ Force trim video 60s...")
+                await trimVideo(tempInput, tempOutput)
+                finalPath = tempOutput
 
 // đọc lại buffer
                 const videoBuffer = fs.readFileSync(finalPath)
