@@ -1010,7 +1010,6 @@ app.post("/update_item_media", async (req, res) => {
                 console.log("📦 Complete done")
 
                 // =========================
-                // =========================
 // 5. WAIT RESULT
 // =========================
                 const resultPath = "/api/v2/media_space/get_video_upload_result"
@@ -1086,6 +1085,20 @@ app.post("/update_item_media", async (req, res) => {
                 )
 
                 console.log("✅ DONE:", item.item_id)
+
+            } catch (e) {
+
+                console.log("❌ ERROR:", e.response?.data || e.message)
+
+                results.push({
+                    item_id: item.item_id,
+                    success: false,
+                    error: e.response?.data || e.message
+                })
+            }
+        }
+
+        res.json(results)
 
     } catch (e) {
         res.json({ error: e.message })
