@@ -910,7 +910,8 @@ app.post("/update_item_media", async (req, res) => {
 
                     // 🔥 QUAN TRỌNG NHẤT
                     form.append("part_content", chunk, {
-                        filename: `part_${part_seq}.mp4`
+                        filename: `part_${part_seq}.mp4`,
+                        contentType: "video/mp4"
                     })
 
                     await axios.post(
@@ -976,7 +977,7 @@ app.post("/update_item_media", async (req, res) => {
 
                 let ready = false
 
-                for (let i = 0; i < 60; i++) {
+                for (let i = 0; i < 100; i++) {
 
                     await sleep(2000)
 
