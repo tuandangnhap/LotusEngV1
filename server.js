@@ -48,9 +48,7 @@ function trimVideo(inputPath, outputPath) {
             .setStartTime(0)
             .setDuration(58)
             .outputOptions([
-                "-c:v libx264",
-                "-c:a aac",
-                "-pix_fmt yuv420p",
+                "-c copy",              // ⚡ cực nhanh
                 "-movflags +faststart"
             ])
             .save(outputPath)
