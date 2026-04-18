@@ -881,9 +881,7 @@ app.post("/update_item_media", async (req, res) => {
                 // =========================
                 // =========================
 // 3. UPLOAD CHUNK (FIX CHUẨN 100%)
-// =========================
                 const uploadPath = "/api/v2/media_space/upload_video_part"
-
                 const CHUNK_SIZE = 1024 * 1024 // 1MB
                 let part_seq = 0
 
@@ -910,15 +908,9 @@ app.post("/update_item_media", async (req, res) => {
                     form.append("part_seq", part_seq)
                     form.append("content_md5", chunk_md5)
 
-                    // 🔥 QUAN TRỌNG NHẤT: gửi FILE thật, không phải base64
-                    const { Readable } = require("stream")
-
-                    const stream = Readable.from(chunk)
-
-                    form.append("part_content", stream, {
-                        filename: `part_${part_seq}.mp4`,
-                        contentType: "video/mp4",
-                        knownLength: chunk.length
+                    // 🔥 QUAN TRỌNG NHẤT
+                    form.append("part_content", chunk, {
+                        filename: `part_${part_seq}.mp4`
                     })
 
                     await axios.post(
@@ -932,12 +924,9 @@ app.post("/update_item_media", async (req, res) => {
                                 shop_id,
                                 sign: sign2
                             },
-                            headers: {
-                                ...form.getHeaders()
-                            },
+                            headers: form.getHeaders(),
                             maxContentLength: Infinity,
-                            maxBodyLength: Infinity,
-                            timeout: 60000
+                            maxBodyLength: Infinity
                         }
                     )
 
@@ -1019,14 +1008,11 @@ app.post("/update_item_media", async (req, res) => {
                         throw new Error(resData.message || "Shopee error")
                     }
 
-                    const responseData = resData?.response
-
                     const status = resData?.response?.status
-                    video_id = resData?.response?.video_info?.video_id
+                    const videoInfo = resData?.response?.video_info
+                    video_id = videoInfo?.video_id
 
-                    console.log("🎬 Status:", status)
-
-                    if (status === "SUCCEEDED" && video_id) {
+                    if (status === "SUCCEEDED") {
                         ready = true
                         break
                     }
