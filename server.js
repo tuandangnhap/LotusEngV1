@@ -870,7 +870,7 @@ app.post("/update_item_media", async (req, res) => {
                     }
                 )
 
-                console.log("INIT RES:", JSON.stringify(initRes.data))
+                console.log("INIT FULL:", JSON.stringify(initRes.data, null, 2))
 
                 const upload_url = initRes.data?.response?.upload_url
                 const video_id = initRes.data?.response?.video_id
