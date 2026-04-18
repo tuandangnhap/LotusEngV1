@@ -837,6 +837,14 @@ app.post("/update_item_media", async (req, res) => {
                 console.log("📦 Size:", videoBuffer.byteLength)
 
                 // =========================
+                // 🔥 THÊM ĐOẠN NÀY
+                const md5 = crypto
+                    .createHash("md5")
+                    .update(videoBuffer)
+                    .digest("hex")
+
+                console.log("📦 Size:", videoBuffer.byteLength)
+                console.log("🔑 MD5:", md5)
                 // 2. INIT VIDEO
                 // =========================
                 const initPath = "/api/v2/media_space/init_video_upload"
@@ -849,7 +857,7 @@ app.post("/update_item_media", async (req, res) => {
 
                 const initRes = await axios.post(
                     `https://partner.shopeemobile.com${initPath}`,
-                    { file_size: videoBuffer.length },
+                    { file_size: videoBuffer.length, file_md5: md5 },
                     {
                         params: {
                             partner_id,
