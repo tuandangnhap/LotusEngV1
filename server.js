@@ -561,7 +561,7 @@ app.post("/get_item_base", upload.single("file"), async (req, res) => {
                             timestamp,
                             sign,
                             item_id_list: chunk.join(","),
-                            response_optional_fields: "description,description_info,weight,dimension,price_info"
+                            response_optional_fields: "description,description_info,weight,dimension,price_info,video_info"
                         }
                     }
                 )
@@ -619,6 +619,7 @@ app.post("/get_item_base", upload.single("file"), async (req, res) => {
                         },
                         weight: item.weight || "",
                         images: item.image?.image_url_list || [],
+                        video_info: item.video_info || [],
                         video_url: item.video_info?.[0]?.video_url || "",
                         original_price: item.price_info?.[0]?.original_price || 0
                     }
