@@ -46,7 +46,7 @@ function trimVideo(inputPath, outputPath) {
     return new Promise((resolve, reject) => {
         ffmpeg(inputPath)
             .setStartTime(0)
-            .setDuration(60)
+            .setDuration(58)
             .outputOptions([
                 "-c:v libx264",
                 "-c:a aac",
@@ -62,6 +62,15 @@ function trimVideo(inputPath, outputPath) {
                 console.log("FFMPEG ERROR:", err)
                 reject(err)
             })
+    })
+}
+
+function getDuration(inputPath) {
+    return new Promise((resolve, reject) => {
+        ffmpeg.ffprobe(inputPath, (err, metadata) => {
+            if (err) return reject(err)
+            resolve(metadata.format.duration)
+        })
     })
 }
 
@@ -863,8 +872,11 @@ app.post("/update_item_media", async (req, res) => {
                 console.log("📦 File size:", stat.size)
 
 // 👉 nếu >60s thường size > ~10MB → cắt luôn cho chắc
-                if (stat.size > 10 * 1024 * 1024) {
-                    console.log("✂️ Auto trim video...")
+                const duration = await getDuration(tempInput)
+                console.log("⏱ Duration:", duration)
+
+                if (duration > 58) {
+                    console.log("✂️ Trim to 58s...")
                     await trimVideo(tempInput, tempOutput)
                     finalPath = tempOutput
                 }
