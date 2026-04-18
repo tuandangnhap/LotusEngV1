@@ -816,7 +816,7 @@ app.post("/update_item_media", async (req, res) => {
                 }
 
                 // =========================
-                // 1. DOWNLOAD VIDEO (1 lần duy nhất)
+                // 1. DOWNLOAD VIDEO
                 // =========================
                 const videoUrl = item.video_url
                 console.log("⬇️ Download:", videoUrl)
@@ -831,21 +831,22 @@ app.post("/update_item_media", async (req, res) => {
                 const videoBuffer = videoRes.data
 
                 if (!videoBuffer || videoBuffer.byteLength < 10000) {
-                    throw new Error("Invalid video (too small or empty)")
+                    throw new Error("Invalid video")
                 }
 
-                console.log("📦 Size:", videoBuffer.byteLength)
-
                 // =========================
-                // 🔥 THÊM ĐOẠN NÀY
+                // 2. MD5
+                // =========================
                 const md5 = crypto
                     .createHash("md5")
                     .update(videoBuffer)
                     .digest("hex")
 
-                console.log("📦 Size:", videoBuffer.byteLength)
+                console.log("📦 Size:", videoBuffer.length)
                 console.log("🔑 MD5:", md5)
-                // 2. INIT VIDEO
+
+                // =========================
+                // 3. INIT VIDEO (🔥 FIX FLOW)
                 // =========================
                 const initPath = "/api/v2/media_space/init_video_upload"
                 const timestamp = Math.floor(Date.now() / 1000)
@@ -857,7 +858,11 @@ app.post("/update_item_media", async (req, res) => {
 
                 const initRes = await axios.post(
                     `https://partner.shopeemobile.com${initPath}`,
-                    { file_size: videoBuffer.length, file_md5: md5 },
+                    {
+                        file_size: videoBuffer.length,
+                        file_md5: md5,
+                        upload_method: "PUT" // 🔥 QUAN TRỌNG
+                    },
                     {
                         params: {
                             partner_id,
@@ -870,25 +875,21 @@ app.post("/update_item_media", async (req, res) => {
                     }
                 )
 
-                console.log("INIT FULL:", JSON.stringify(initRes.data, null, 2))
+                console.log("INIT:", JSON.stringify(initRes.data))
 
-                // 🔥 check lỗi chuẩn
                 if (initRes.data.error) {
-                    throw new Error(
-                        `Init fail: ${initRes.data.error} - ${initRes.data.message}`
-                    )
+                    throw new Error(initRes.data.message)
                 }
-
 
                 const upload_url = initRes.data?.response?.upload_url
                 const video_id = initRes.data?.response?.video_id
 
                 if (!upload_url || !video_id) {
-                    throw new Error("Init video failed")
+                    throw new Error("Init không trả upload_url/video_id")
                 }
 
                 // =========================
-                // 3. UPLOAD VIDEO (FIX CHUẨN)
+                // 4. UPLOAD
                 // =========================
                 console.log("⬆️ Uploading...")
 
@@ -910,7 +911,7 @@ app.post("/update_item_media", async (req, res) => {
                 console.log("✅ Upload done")
 
                 // =========================
-                // 4. COMPLETE
+                // 5. COMPLETE
                 // =========================
                 const completePath = "/api/v2/media_space/complete_video_upload"
                 const timestamp2 = Math.floor(Date.now() / 1000)
@@ -938,7 +939,7 @@ app.post("/update_item_media", async (req, res) => {
                 console.log("📦 Complete done")
 
                 // =========================
-                // 5. WAIT RESULT
+                // 6. WAIT RESULT
                 // =========================
                 const resultPath = "/api/v2/media_space/get_video_upload_result"
 
@@ -974,21 +975,14 @@ app.post("/update_item_media", async (req, res) => {
                     const status = resultRes.data?.response?.video_status
                     console.log("🎬 Status:", status)
 
-                    if (status === "NORMAL") {
-                        ready = true
-                    }
-
-                    if (status === "FAILED") {
-                        throw new Error("Shopee xử lý video FAILED")
-                    }
+                    if (status === "NORMAL") ready = true
+                    if (status === "FAILED") throw new Error("Video FAILED")
                 }
 
-                if (!ready) {
-                    throw new Error("Video not ready")
-                }
+                if (!ready) throw new Error("Video not ready")
 
                 // =========================
-                // 6. UPDATE ITEM
+                // 7. UPDATE ITEM
                 // =========================
                 const updatePath = "/api/v2/product/update_item"
                 const timestamp4 = Math.floor(Date.now() / 1000)
@@ -1011,8 +1005,7 @@ app.post("/update_item_media", async (req, res) => {
                             access_token,
                             shop_id,
                             sign: signUpdate
-                        },
-                        timeout: 15000
+                        }
                     }
                 )
 
