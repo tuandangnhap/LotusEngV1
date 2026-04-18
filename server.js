@@ -1010,15 +1010,14 @@ app.post("/update_item_media", async (req, res) => {
                 console.log("📦 Complete done")
 
                 // =========================
-                // 5. WAIT RESULT (FIX TIME)
                 // =========================
+// 5. WAIT RESULT
+// =========================
                 const resultPath = "/api/v2/media_space/get_video_upload_result"
 
-                let video_id = null
+                for (let i = 0; i < 60; i++) {
 
-                for (let i = 0; i < 200; i++) {
-
-                    await sleep(5000) // 5s
+                    await sleep(2000)
 
                     const ts4 = Math.floor(Date.now() / 1000)
 
@@ -1042,24 +1041,21 @@ app.post("/update_item_media", async (req, res) => {
                     )
 
                     const status = resultRes.data?.response?.status
-                    video_id = resultRes.data?.response?.video_id
                     console.log(`🎬 Status [${i}]:`, status)
-                    console.log(`🎬 video-id:`, video_id)
-
-                    if (status === "SUCCEEDED" && video_id) {
-                        console.log("🎯 GOT VIDEO ID")
-                        break
-                    }
 
                     if (status === "FAILED") {
-                        console.log("❌ FULL:", resultRes.data)
                         throw new Error("Video FAILED")
+                    }
+
+                    if (status === "SUCCEEDED") {
+                        console.log("🎯 VIDEO READY")
+                        break
                     }
                 }
 
-                // =========================
-                // 6. UPDATE ITEM
-                // =========================
+// =========================
+// 6. UPDATE ITEM (DÙNG upload_id)
+// =========================
                 const updatePath = "/api/v2/product/update_item"
                 const ts5 = Math.floor(Date.now() / 1000)
 
@@ -1067,39 +1063,29 @@ app.post("/update_item_media", async (req, res) => {
                     .createHmac("sha256", partner_key)
                     .update(partner_id + updatePath + ts5 + access_token + shop_id)
                     .digest("hex")
-                console.log("VIDEO ID:", video_id)
+
                 await axios.post(
                     `https://partner.shopeemobile.com${updatePath}`,
                     {
                         item_id: item.item_id,
                         video_info: [
                             {
-                                video_id: video_id   // 👈 cái này mới là KEY
+                                video_upload_id: video_upload_id
                             }
                         ]
                     },
                     {
-                        params: { partner_id, timestamp: ts5, access_token, shop_id, sign: sign5 }
+                        params: {
+                            partner_id,
+                            timestamp: ts5,
+                            access_token,
+                            shop_id,
+                            sign: sign5
+                        }
                     }
                 )
 
                 console.log("✅ DONE:", item.item_id)
-
-                results.push({ item_id: item.item_id, success: true })
-
-            } catch (e) {
-
-                console.log("❌ ERROR:", e.response?.data || e.message)
-
-                results.push({
-                    item_id: item.item_id,
-                    success: false,
-                    error: e.response?.data || e.message
-                })
-            }
-        }
-
-        res.json(results)
 
     } catch (e) {
         res.json({ error: e.message })
