@@ -1068,7 +1068,7 @@ app.post("/update_item_media", async (req, res) => {
                     .createHmac("sha256", partner_key)
                     .update(partner_id + updatePath + ts5 + access_token + shop_id)
                     .digest("hex")
-
+                console.log("VIDEO ID:", video_id)
                 await axios.post(
                     `https://partner.shopeemobile.com${updatePath}`,
                     {
