@@ -863,6 +863,9 @@ app.post("/update_item_media", async (req, res) => {
                             access_token,
                             shop_id,
                             sign: sign1
+                        },
+                        headers: {
+                            "Content-Type": "application/json"
                         }
                     }
                 )
@@ -876,11 +879,11 @@ app.post("/update_item_media", async (req, res) => {
                 }
 
                 // =========================
-                // 3. UPLOAD CHUNK
+                // 3. UPLOAD CHUNK (FIX CHUẨN)
                 // =========================
                 const uploadPath = "/api/v2/media_space/upload_video_part"
 
-                const CHUNK_SIZE = 1024 * 1024 * 2 // 2MB
+                const CHUNK_SIZE = 1024 * 1024 // 🔥 1MB (QUAN TRỌNG)
                 let part_seq = 0
 
                 for (let start = 0; start < videoBuffer.length; start += CHUNK_SIZE) {
@@ -906,6 +909,7 @@ app.post("/update_item_media", async (req, res) => {
                         {
                             video_upload_id,
                             part_seq,
+                            part_size: chunk.length, // 🔥 FIX
                             content_md5: chunk_md5,
                             content: chunk.toString("base64")
                         },
@@ -917,8 +921,9 @@ app.post("/update_item_media", async (req, res) => {
                                 shop_id,
                                 sign: sign2
                             },
-                            maxContentLength: Infinity,
-                            maxBodyLength: Infinity,
+                            headers: {
+                                "Content-Type": "application/json" // 🔥 FIX
+                            },
                             timeout: 60000
                         }
                     )
@@ -949,6 +954,9 @@ app.post("/update_item_media", async (req, res) => {
                             access_token,
                             shop_id,
                             sign: sign3
+                        },
+                        headers: {
+                            "Content-Type": "application/json"
                         }
                     }
                 )
@@ -956,14 +964,14 @@ app.post("/update_item_media", async (req, res) => {
                 console.log("📦 Complete done")
 
                 // =========================
-                // 5. WAIT RESULT (FIX CHUẨN)
+                // 5. WAIT RESULT
                 // =========================
                 const resultPath = "/api/v2/media_space/get_video_upload_result"
 
                 let ready = false
                 let video_id = null
 
-                for (let i = 0; i < 40; i++) { // ~80s
+                for (let i = 0; i < 50; i++) { // 🔥 ~100s
 
                     await sleep(2000)
 
@@ -989,8 +997,6 @@ app.post("/update_item_media", async (req, res) => {
                     )
 
                     const resData = resultRes.data
-
-                    console.log("RESULT RAW:", JSON.stringify(resData))
 
                     if (resData.error) {
                         throw new Error(resData.message || "Shopee error")
@@ -1044,6 +1050,9 @@ app.post("/update_item_media", async (req, res) => {
                             access_token,
                             shop_id,
                             sign: sign5
+                        },
+                        headers: {
+                            "Content-Type": "application/json"
                         }
                     }
                 )
