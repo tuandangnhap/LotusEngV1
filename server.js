@@ -1043,8 +1043,13 @@ app.post("/update_item_media", async (req, res) => {
                     video_id = resultRes.data?.response?.video_id
                     console.log(`🎬 Status [${i}]:`, status)
 
-                    if (status === "SUCCEEDED") {
-                        ready = true
+                    if (status === "SUCCEEDED" && !video_id) {
+                        console.log("⏳ Waiting for video_id...")
+                        continue
+                    }
+
+                    if (status === "SUCCEEDED" && video_id) {
+                        console.log("🎯 GOT VIDEO ID")
                         break
                     }
 
