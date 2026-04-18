@@ -873,12 +873,13 @@ app.post("/update_item_media", async (req, res) => {
                 // 3. UPLOAD CHUNK
                 // =========================
                 const uploadPath = "/api/v2/media_space/upload_video_part"
-                const CHUNK_SIZE = 1024 * 1024
+                const CHUNK_SIZE = 4 * 1024 * 1024
                 let part_seq = 0
 
                 for (let start = 0; start < videoBuffer.length; start += CHUNK_SIZE) {
 
-                    const chunk = videoBuffer.slice(start, start + CHUNK_SIZE)
+                    const end = Math.min(start + CHUNK_SIZE, videoBuffer.length)
+                    const chunk = videoBuffer.slice(start, end)
 
                     const chunk_md5 = crypto
                         .createHash("md5")
@@ -913,6 +914,10 @@ app.post("/update_item_media", async (req, res) => {
                     )
 
                     console.log(`⬆️ part ${part_seq}`, uploadRes.data)
+
+                    if (uploadRes.data.error) {
+                        throw new Error(uploadRes.data.message)
+                    }
 
                     part_seq++
                 }
