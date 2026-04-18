@@ -1039,6 +1039,7 @@ app.post("/update_item_media", async (req, res) => {
                     )
 
                     const status = resultRes.data?.response?.status
+                    const video_id = resultRes.data?.response?.video_id
 
                     console.log(`🎬 Status [${i}]:`, status)
 
@@ -1072,7 +1073,11 @@ app.post("/update_item_media", async (req, res) => {
                     `https://partner.shopeemobile.com${updatePath}`,
                     {
                         item_id: item.item_id,
-                        video_info: [{ video_upload_id }]
+                        video_info: [
+                            {
+                                video_id: video_id   // 👈 cái này mới là KEY
+                            }
+                        ]
                     },
                     {
                         params: { partner_id, timestamp: ts5, access_token, shop_id, sign: sign5 }
