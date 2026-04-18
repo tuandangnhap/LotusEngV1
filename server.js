@@ -881,7 +881,7 @@ app.post("/update_item_media", async (req, res) => {
                 // =========================
                 // 3. UPLOAD CHUNK (FIX CHUẨN)
                 // =========================
-
+                const uploadPath = "/api/v2/media_space/upload_video_part" // 👈 THÊM DÒNG NÀY
                 const CHUNK_SIZE = 1024 * 1024
                 let part_seq = 0
 
