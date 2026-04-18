@@ -796,6 +796,7 @@ app.get("/download_json", (req, res) => {
     }
 })
 /* ================== START ================== */
+const FormData = require("form-data")
 app.post("/update_item_media", async (req, res) => {
     try {
 
@@ -879,10 +880,12 @@ app.post("/update_item_media", async (req, res) => {
                 }
 
                 // =========================
-                // 3. UPLOAD CHUNK (FIX CHUẨN)
                 // =========================
-                const uploadPath = "/api/v2/media_space/upload_video_part" // 👈 THÊM DÒNG NÀY
-                const CHUNK_SIZE = 1024 * 1024
+// 3. UPLOAD CHUNK (FIX CHUẨN 100%)
+// =========================
+                const uploadPath = "/api/v2/media_space/upload_video_part"
+
+                const CHUNK_SIZE = 1024 * 1024 // 1MB
                 let part_seq = 0
 
                 for (let start = 0; start < videoBuffer.length; start += CHUNK_SIZE) {
@@ -903,14 +906,20 @@ app.post("/update_item_media", async (req, res) => {
 
                     console.log(`⬆️ Uploading part ${part_seq}... size=${chunk.length}`)
 
+                    const form = new FormData()
+                    form.append("video_upload_id", video_upload_id)
+                    form.append("part_seq", part_seq)
+                    form.append("content_md5", chunk_md5)
+
+                    // 🔥 QUAN TRỌNG NHẤT: gửi FILE thật, không phải base64
+                    form.append("part_content", chunk, {
+                        filename: `part_${part_seq}.mp4`,
+                        contentType: "video/mp4"
+                    })
+
                     await axios.post(
                         `https://partner.shopeemobile.com${uploadPath}`,
-                        {
-                            video_upload_id,
-                            part_seq,
-                            content_md5: chunk_md5,
-                            part_content: chunk.toString("base64") // 🔥 FIX CHÍNH
-                        },
+                        form,
                         {
                             params: {
                                 partner_id,
@@ -920,8 +929,11 @@ app.post("/update_item_media", async (req, res) => {
                                 sign: sign2
                             },
                             headers: {
-                                "Content-Type": "application/json"
-                            }
+                                ...form.getHeaders()
+                            },
+                            maxContentLength: Infinity,
+                            maxBodyLength: Infinity,
+                            timeout: 60000
                         }
                     )
 
