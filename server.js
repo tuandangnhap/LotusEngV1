@@ -879,36 +879,54 @@ app.post("/update_item_media", async (req, res) => {
                 // 3. UPLOAD PART (FULL FILE)
                 // =========================
                 const uploadPath = "/api/v2/media_space/upload_video_part"
-                const ts2 = Math.floor(Date.now() / 1000)
 
-                const sign2 = crypto
-                    .createHmac("sha256", partner_key)
-                    .update(partner_id + uploadPath + ts2 + access_token + shop_id)
-                    .digest("hex")
+                const CHUNK_SIZE = 1024 * 1024 * 2 // 2MB / part (an toàn)
+                let part_seq = 0
 
-                console.log("⬆️ Uploading part...")
+                for (let start = 0; start < videoBuffer.length; start += CHUNK_SIZE) {
 
-                await axios.post(
-                    `https://partner.shopeemobile.com${uploadPath}`,
-                    {
-                        video_upload_id,
-                        part_seq: 0,
-                        content_md5: md5,
-                        content: videoBuffer.toString("base64") // 🔥 bắt buộc
-                    },
-                    {
-                        params: {
-                            partner_id,
-                            timestamp: ts2,
-                            access_token,
-                            shop_id,
-                            sign: sign2
+                    const chunk = videoBuffer.slice(start, start + CHUNK_SIZE)
+
+                    const chunk_md5 = crypto
+                        .createHash("md5")
+                        .update(chunk)
+                        .digest("hex")
+
+                    const ts2 = Math.floor(Date.now() / 1000)
+
+                    const sign2 = crypto
+                        .createHmac("sha256", partner_key)
+                        .update(partner_id + uploadPath + ts2 + access_token + shop_id)
+                        .digest("hex")
+
+                    console.log(`⬆️ Uploading part ${part_seq}... size=${chunk.length}`)
+
+                    await axios.post(
+                        `https://partner.shopeemobile.com${uploadPath}`,
+                        {
+                            video_upload_id,
+                            part_seq,
+                            content_md5: chunk_md5,
+                            content: chunk.toString("base64")
                         },
-                        timeout: 60000
-                    }
-                )
+                        {
+                            params: {
+                                partner_id,
+                                timestamp: ts2,
+                                access_token,
+                                shop_id,
+                                sign: sign2
+                            },
+                            maxContentLength: Infinity,
+                            maxBodyLength: Infinity,
+                            timeout: 60000
+                        }
+                    )
 
-                console.log("✅ Upload part done")
+                    part_seq++
+                }
+
+                console.log("✅ Upload all parts done")
 
                 // =========================
                 // 4. COMPLETE
