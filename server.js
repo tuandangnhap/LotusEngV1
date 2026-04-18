@@ -822,12 +822,12 @@ app.post("/update_item_media", async (req, res) => {
                     url: item.video_url,
                     method: "GET",
                     responseType: "arraybuffer",
-                    timeout: 60000
+                    timeout: 120000
                 })
 
-                const videoBuffer = videoRes.data
+                const videoBuffer = Buffer.from(videoRes.data)
 
-                if (!videoBuffer || videoBuffer.byteLength < 10000) {
+                if (!videoBuffer || videoBuffer.length < 10000) {
                     throw new Error("Invalid video")
                 }
 
@@ -857,16 +857,7 @@ app.post("/update_item_media", async (req, res) => {
                         file_md5: md5
                     },
                     {
-                        params: {
-                            partner_id,
-                            timestamp: ts1,
-                            access_token,
-                            shop_id,
-                            sign: sign1
-                        },
-                        headers: {
-                            "Content-Type": "application/json"
-                        }
+                        params: { partner_id, timestamp: ts1, access_token, shop_id, sign: sign1 }
                     }
                 )
 
@@ -875,14 +866,14 @@ app.post("/update_item_media", async (req, res) => {
                 const video_upload_id = initRes.data?.response?.video_upload_id
 
                 if (!video_upload_id) {
-                    throw new Error("Init fail: no video_upload_id")
+                    throw new Error("Init fail")
                 }
 
                 // =========================
+                // 3. UPLOAD CHUNK
                 // =========================
-// 3. UPLOAD CHUNK (FIX CHUẨN 100%)
                 const uploadPath = "/api/v2/media_space/upload_video_part"
-                const CHUNK_SIZE = 1024 * 1024 // 1MB
+                const CHUNK_SIZE = 1024 * 1024
                 let part_seq = 0
 
                 for (let start = 0; start < videoBuffer.length; start += CHUNK_SIZE) {
@@ -901,41 +892,33 @@ app.post("/update_item_media", async (req, res) => {
                         .update(partner_id + uploadPath + ts2 + access_token + shop_id)
                         .digest("hex")
 
-                    console.log(`⬆️ Uploading part ${part_seq}... size=${chunk.length}`)
-
                     const form = new FormData()
                     form.append("video_upload_id", video_upload_id)
                     form.append("part_seq", part_seq)
                     form.append("content_md5", chunk_md5)
-
-                    // 🔥 QUAN TRỌNG NHẤT
                     form.append("part_content", chunk, {
                         filename: `part_${part_seq}.mp4`,
                         contentType: "video/mp4"
                     })
 
-                    await axios.post(
+                    const uploadRes = await axios.post(
                         `https://partner.shopeemobile.com${uploadPath}`,
                         form,
                         {
-                            params: {
-                                partner_id,
-                                timestamp: ts2,
-                                access_token,
-                                shop_id,
-                                sign: sign2
-                            },
+                            params: { partner_id, timestamp: ts2, access_token, shop_id, sign: sign2 },
                             headers: form.getHeaders(),
                             maxContentLength: Infinity,
                             maxBodyLength: Infinity
                         }
                     )
 
+                    console.log(`⬆️ part ${part_seq}`, uploadRes.data)
+
                     part_seq++
                 }
 
                 // =========================
-                // 4. COMPLETE
+                // 4. COMPLETE (FIX QUAN TRỌNG)
                 // =========================
                 const completePath = "/api/v2/media_space/complete_video_upload"
                 const ts3 = Math.floor(Date.now() / 1000)
@@ -945,41 +928,34 @@ app.post("/update_item_media", async (req, res) => {
                     .update(partner_id + completePath + ts3 + access_token + shop_id)
                     .digest("hex")
 
-                // tạo danh sách part đã upload
                 const part_seq_list = Array.from({ length: part_seq }, (_, i) => i)
 
                 await axios.post(
                     `https://partner.shopeemobile.com${completePath}`,
                     {
                         video_upload_id,
-                        part_seq_list // 🔥 QUAN TRỌNG NHẤT
+                        part_seq_list,
+                        report_data: {
+                            upload_cost: videoBuffer.length
+                        }
                     },
                     {
-                        params: {
-                            partner_id,
-                            timestamp: ts3,
-                            access_token,
-                            shop_id,
-                            sign: sign3
-                        },
-                        headers: {
-                            "Content-Type": "application/json"
-                        }
+                        params: { partner_id, timestamp: ts3, access_token, shop_id, sign: sign3 }
                     }
                 )
 
                 console.log("📦 Complete done")
 
                 // =========================
-                // 5. WAIT RESULT
+                // 5. WAIT RESULT (FIX TIME)
                 // =========================
                 const resultPath = "/api/v2/media_space/get_video_upload_result"
 
                 let ready = false
 
-                for (let i = 0; i < 100; i++) {
+                for (let i = 0; i < 200; i++) {
 
-                    await sleep(2000)
+                    await sleep(5000) // 5s
 
                     const ts4 = Math.floor(Date.now() / 1000)
 
@@ -1002,13 +978,9 @@ app.post("/update_item_media", async (req, res) => {
                         }
                     )
 
-                    const resData = resultRes.data
+                    const status = resultRes.data?.response?.status
 
-                    console.log("RESULT RAW:", JSON.stringify(resData))
-
-                    const status = resData?.response?.status
-
-                    console.log("🎬 Status:", status)
+                    console.log(`🎬 Status [${i}]:`, status)
 
                     if (status === "SUCCEEDED") {
                         ready = true
@@ -1016,12 +988,13 @@ app.post("/update_item_media", async (req, res) => {
                     }
 
                     if (status === "FAILED") {
+                        console.log("❌ FULL:", resultRes.data)
                         throw new Error("Video FAILED")
                     }
                 }
 
                 if (!ready) {
-                    throw new Error("Video not ready")
+                    throw new Error("Video stuck INITIATED (check format)")
                 }
 
                 // =========================
@@ -1039,32 +1012,16 @@ app.post("/update_item_media", async (req, res) => {
                     `https://partner.shopeemobile.com${updatePath}`,
                     {
                         item_id: item.item_id,
-                        video_info: [
-                            {
-                                video_upload_id: video_upload_id
-                            }
-                        ]
+                        video_info: [{ video_upload_id }]
                     },
                     {
-                        params: {
-                            partner_id,
-                            timestamp: ts5,
-                            access_token,
-                            shop_id,
-                            sign: sign5
-                        },
-                        headers: {
-                            "Content-Type": "application/json"
-                        }
+                        params: { partner_id, timestamp: ts5, access_token, shop_id, sign: sign5 }
                     }
                 )
 
                 console.log("✅ DONE:", item.item_id)
 
-                results.push({
-                    item_id: item.item_id,
-                    success: true
-                })
+                results.push({ item_id: item.item_id, success: true })
 
             } catch (e) {
 
