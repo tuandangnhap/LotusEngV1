@@ -1,8 +1,5 @@
 const express = require("express")
 const axios = require("axios")
-const ffmpeg = require("fluent-ffmpeg")
-const ffmpegPath = require("ffmpeg-static")
-ffmpeg.setFfmpegPath(ffmpegPath)
 const crypto = require("crypto")
 const path = require("path")
 const multer = require("multer")
@@ -37,29 +34,6 @@ function sign(path, timestamp) {
         .createHmac("sha256", partner_key)
         .update(base)
         .digest("hex")
-}
-
-function trimVideo(inputPath, outputPath) {
-    return new Promise((resolve, reject) => {
-        ffmpeg(inputPath)
-            .setStartTime(0)
-            .setDuration(60)
-            .outputOptions([
-                "-c:v libx264",
-                "-c:a aac",
-                "-pix_fmt yuv420p",
-                "-movflags +faststart"
-            ])
-            .save(outputPath)
-            .on("end", () => {
-                console.log("✂️ Trim done")
-                resolve(outputPath)
-            })
-            .on("error", (err) => {
-                console.log("FFMPEG ERROR:", err)
-                reject(err)
-            })
-    })
 }
 
 // chunk array
@@ -851,7 +825,7 @@ app.post("/update_item_media", async (req, res) => {
                     writer.on("error", reject)
                 })
 
-                let finalPath = tempInput
+
 
 // =========================
 // CHECK FILE SIZE (quick rule)
@@ -860,13 +834,29 @@ app.post("/update_item_media", async (req, res) => {
                 console.log("📦 File size:", stat.size)
 
 // 👉 nếu >60s thường size > ~10MB → cắt luôn cho chắc
-                // ❌ bỏ check size
-// if (stat.size > 10MB)
 
-                console.log("✂️ Force trim video 60s...")
-                await trimVideo(tempInput, tempOutput)
-                finalPath = tempOutput
+                // =========================
+// FILTER VIDEO (KHÔNG DÙNG FFMPEG)
+// =========================
 
+// 1. Check duration nếu có
+                const duration = item.video_info?.[0]?.duration
+
+                if (duration && duration > 60) {
+                    console.log("❌ Skip: video quá dài", duration)
+                    fs.unlinkSync(tempInput)
+                    continue
+                }
+
+// 2. Check size (fallback)
+                if (stat.size > 15 * 1024 * 1024) {
+                    console.log("❌ Skip: video quá nặng (khả năng >60s)")
+                    fs.unlinkSync(tempInput)
+                    continue
+                }
+
+// giữ nguyên file gốc
+                let finalPath = tempInput
 // đọc lại buffer
                 const videoBuffer = fs.readFileSync(finalPath)
 
