@@ -905,27 +905,69 @@ app.post("/update_item_media", async (req, res) => {
                     .update(partner_id + initPath + ts1 + access_token + shop_id)
                     .digest("hex")
 
-                const initRes = await axios.post(
-                    `https://partner.shopeemobile.com${initPath}`,
-                    {
-                        file_size: videoBuffer.length,
-                        file_md5: md5
-                    },
-                    {
-                        params: { partner_id, timestamp: ts1, access_token, shop_id, sign: sign1 }
-                    }
-                )
+                let initRes
 
-                console.log("INIT:", JSON.stringify(initRes.data))
+                try {
+                    initRes = await axios.post(
+                        `https://partner.shopeemobile.com${initPath}`,
+                        {
+                            file_size: videoBuffer.length,
+                            file_md5: md5
+                        },
+                        {
+                            params: { partner_id, timestamp: ts1, access_token, shop_id, sign: sign1 },
+                            timeout: 30000
+                        }
+                    )
+                } catch (e) {
+                    console.log("❌ INIT REQUEST FAIL:")
+                    console.log(e.response?.data || e.message)
+
+                    fs.writeFileSync(
+                        `error_init_request_${Date.now()}.json`,
+                        JSON.stringify(e.response?.data || e.message, null, 2)
+                    )
+
+                    throw e
+                }
+
+// 🔥 LOG FULL RESPONSE
+                console.log("🧾 INIT FULL RESPONSE:")
+                console.log(JSON.stringify(initRes.data, null, 2))
+
+// 🔥 VALIDATE RESPONSE
+                if (!initRes.data || initRes.data.error) {
+                    console.log("❌ INIT API ERROR:", initRes.data)
+
+                    fs.writeFileSync(
+                        `error_init_api_${Date.now()}.json`,
+                        JSON.stringify(initRes.data, null, 2)
+                    )
+
+                    throw new Error("INIT API ERROR")
+                }
 
                 const video_upload_id = initRes.data?.response?.video_upload_id
 
-                // 🔥 lưu tạm (RAM - nhanh nhất)
-                item._video_upload_id = video_upload_id
-
+// 🔥 CASE QUAN TRỌNG: KHÔNG CÓ ID
                 if (!video_upload_id) {
-                    throw new Error("Init fail")
+                    console.log("🚨 MISSING video_upload_id !!!")
+
+                    fs.writeFileSync(
+                        `error_missing_upload_id_${Date.now()}.json`,
+                        JSON.stringify({
+                            request: {
+                                file_size: videoBuffer.length,
+                                file_md5: md5
+                            },
+                            response: initRes.data
+                        }, null, 2)
+                    )
+
+                    throw new Error("Missing video_upload_id")
                 }
+
+                console.log("✅ video_upload_id:", video_upload_id)
 
                 // =========================
                 // 3. UPLOAD CHUNK
