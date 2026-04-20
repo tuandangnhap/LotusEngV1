@@ -1107,13 +1107,32 @@ app.post("/update_item_media", async (req, res) => {
                     .createHmac("sha256", partner_key)
                     .update(partner_id + updatePath + ts5 + access_token + shop_id)
                     .digest("hex")
+
+                // ⏳ đợi CDN ổn định
+                await sleep(12000)
+
+// 1. CLEAR VIDEO
+                await axios.post(
+                    `https://partner.shopeemobile.com${updatePath}`,
+                    {
+                        item_id: item.item_id,
+                        video_info: []
+                    },
+                    { params: { partner_id, timestamp: ts5, access_token, shop_id, sign: sign5 } }
+                )
+
+                console.log("🧹 Cleared old video")
+
+                await sleep(3000)
+
                 await axios.post(
                     `https://partner.shopeemobile.com${updatePath}`,
                     {
                         item_id: item.item_id,
                         video_info: [
                             {
-                                video_upload_id: video_upload_id
+                                video_upload_id: video_upload_id,
+                                video_url: "" // 👈 thêm dòng này
                             }
                         ]
                     },
