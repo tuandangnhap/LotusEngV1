@@ -1065,31 +1065,27 @@ app.post("/update_item_media", async (req, res) => {
                     .createHmac("sha256", partner_key)
                     .update(partner_id + updatePath + ts5 + access_token + shop_id)
                     .digest("hex")
-                for (let i = 0; i < 3; i++) {
-                    console.log(`🔁 Attach try ${i + 1}`)
-                    await axios.post(
-                        `https://partner.shopeemobile.com${updatePath}`,
-                        {
-                            item_id: item.item_id,
-                            video_info: [
-                                {
-                                    video_upload_id: video_upload_id
-                                }
-                            ]
-                        },
-                        {
-                            params: {
-                                partner_id,
-                                timestamp: ts5,
-                                access_token,
-                                shop_id,
-                                sign: sign5
+                console.log(`🔁 Attach try ${i + 1}`)
+                await axios.post(
+                    `https://partner.shopeemobile.com${updatePath}`,
+                    {
+                        item_id: item.item_id,
+                        video_info: [
+                            {
+                                video_upload_id: video_upload_id
                             }
+                        ]
+                    },
+                    {
+                        params: {
+                            partner_id,
+                            timestamp: ts5,
+                            access_token,
+                            shop_id,
+                            sign: sign5
                         }
-                    )
-                    await sleep(5000)
-                }
-
+                    }
+                )
                 console.log("✅ DONE:", item.item_id)
 
             } catch (e) {
