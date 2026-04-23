@@ -1104,37 +1104,38 @@ app.post("/update_item_media", async (req, res) => {
 
                 console.log("🧹 Cleared old video")
 
-                await sleep(9000)
+                // await sleep(9000)
 
-                // ADD VIDEO
-                const tsAdd = Math.floor(Date.now() / 1000)
-
-                const signAdd = crypto
-                    .createHmac("sha256", partner_key)
-                    .update(partner_id + updatePath + tsAdd + access_token + shop_id)
-                    .digest("hex")
-
-                await axios.post(
-                    `https://partner.shopeemobile.com${updatePath}`,
-                    {
-                        item_id: item.item_id,
-                        video_info: [
-                            {
-                                video_upload_id: video_upload_id
-                            }
-                        ]
-                    },
-                    {
-                        params: {
-                            partner_id,
-                            timestamp: tsAdd,
-                            access_token,
-                            shop_id,
-                            sign: signAdd
-                        }
-                    }
-                )
-                console.log("✅ DONE:", item.item_id)
+                // // ADD VIDEO
+                // const tsAdd = Math.floor(Date.now() / 1000)
+                //
+                // const signAdd = crypto
+                //     .createHmac("sha256", partner_key)
+                //     .update(partner_id + updatePath + tsAdd + access_token + shop_id)
+                //     .digest("hex")
+                //
+                // await axios.post(
+                //     `https://partner.shopeemobile.com${updatePath}`,
+                //     {
+                //         item_id: item.item_id,
+                //         video_info: [
+                //             {
+                //                 video_upload_id: video_upload_id,
+                //                 video_position: 0
+                //             }
+                //         ]
+                //     },
+                //     {
+                //         params: {
+                //             partner_id,
+                //             timestamp: tsAdd,
+                //             access_token,
+                //             shop_id,
+                //             sign: signAdd
+                //         }
+                //     }
+                // )
+                // console.log("✅ DONE:", item.item_id)
 
             } catch (e) {
 
