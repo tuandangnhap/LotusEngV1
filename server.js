@@ -46,7 +46,7 @@ function trimVideo(inputPath, outputPath) {
     return new Promise((resolve, reject) => {
         ffmpeg(inputPath)
             .setStartTime(0)
-            .setDuration(55) // 🔥 đổi 55s cho an toàn
+            .setDuration(55)
 
             .videoCodec("libx264")
             .audioCodec("aac")
@@ -62,16 +62,21 @@ function trimVideo(inputPath, outputPath) {
                 "-b:a 128k"
             ])
 
-            .save(outputPath)
+            .on("progress", (p) => {
+                console.log(`⏳ Encode: ${p.percent?.toFixed(2)}%`)
+            })
 
             .on("end", () => {
-                console.log("✂️ Trim + re-encode done")
+                console.log("✅ Encode done")
                 resolve(outputPath)
             })
+
             .on("error", (err) => {
-                console.log("FFMPEG ERROR:", err)
+                console.log("❌ FFMPEG ERROR:", err)
                 reject(err)
             })
+
+            .save(outputPath)
     })
 }
 
