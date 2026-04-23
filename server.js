@@ -897,69 +897,55 @@ app.post("/update_item_media", async (req, res) => {
                 // =========================
                 // 2. INIT
                 // =========================
+                // =========================
+// 2. INIT (FIX CHUẨN)
+// =========================
                 const initPath = "/api/v2/media_space/init_video_upload"
                 const ts1 = Math.floor(Date.now() / 1000)
 
                 const sign1 = crypto
                     .createHmac("sha256", partner_key)
-                    .update(partner_id + initPath + ts1 + access_token + shop_id)
+                    .update(partner_id + initPath + ts1)
                     .digest("hex")
 
-                let initRes
+                const initUrl = `https://partner.shopeemobile.com${initPath}`
 
-                try {
-                    initRes = await axios.post(
-                        `https://partner.shopeemobile.com${initPath}`,
-                        {
-                            file_size: videoBuffer.length,
-                            file_md5: md5
-                        },
-                        {
-                            params: { partner_id, timestamp: ts1, access_token, shop_id, sign: sign1 },
-                            timeout: 30000
-                        }
-                    )
-                } catch (e) {
-                    console.log("❌ INIT REQUEST FAIL:")
-                    console.log(e.response?.data || e.message)
-
-                    fs.writeFileSync(
-                        `error_init_request_${Date.now()}.json`,
-                        JSON.stringify(e.response?.data || e.message, null, 2)
-                    )
-
-                    throw e
+                const params = {
+                    partner_id,
+                    timestamp: ts1,
+                    access_token,
+                    shop_id,
+                    sign: sign1
                 }
 
+                const body = {
+                    file_size: videoBuffer.length,
+                    file_md5: md5
+                }
+
+// 🔥 LOG FULL REQUEST
+                console.log("🟡 INIT REQUEST:")
+                console.log(JSON.stringify({ url: initUrl, params, body }, null, 2))
+
+                const initRes = await axios.post(initUrl, body, { params })
+
 // 🔥 LOG FULL RESPONSE
-                console.log("🧾 INIT FULL RESPONSE:")
+                console.log("🟢 INIT RESPONSE:")
                 console.log(JSON.stringify(initRes.data, null, 2))
 
-// 🔥 VALIDATE RESPONSE
                 if (!initRes.data || initRes.data.error) {
-                    console.log("❌ INIT API ERROR:", initRes.data)
-
-                    fs.writeFileSync(
-                        `error_init_api_${Date.now()}.json`,
-                        JSON.stringify(initRes.data, null, 2)
-                    )
-
-                    throw new Error("INIT API ERROR")
+                    throw new Error("INIT API ERROR: " + JSON.stringify(initRes.data))
                 }
 
                 const video_upload_id = initRes.data?.response?.video_upload_id
 
-// 🔥 CASE QUAN TRỌNG: KHÔNG CÓ ID
                 if (!video_upload_id) {
                     console.log("🚨 MISSING video_upload_id !!!")
 
                     fs.writeFileSync(
                         `error_missing_upload_id_${Date.now()}.json`,
                         JSON.stringify({
-                            request: {
-                                file_size: videoBuffer.length,
-                                file_md5: md5
-                            },
+                            request: { url: initUrl, params, body },
                             response: initRes.data
                         }, null, 2)
                     )
@@ -1099,31 +1085,34 @@ app.post("/update_item_media", async (req, res) => {
 // 6. UPDATE ITEM (DÙNG upload_id)
 // =========================
                 const updatePath = "/api/v2/product/update_item"
-                const ts5 = Math.floor(Date.now() / 1000)
+                // CLEAR VIDEO
+                const tsClear = Math.floor(Date.now() / 1000)
 
-                console.log("id", video_upload_id)
-
-                const sign5 = crypto
+                const signClear = crypto
                     .createHmac("sha256", partner_key)
-                    .update(partner_id + updatePath + ts5 + access_token + shop_id)
+                    .update(partner_id + updatePath + tsClear + access_token + shop_id)
                     .digest("hex")
 
-                // ⏳ đợi CDN ổn định
-                await sleep(12000)
-
-// 1. CLEAR VIDEO
                 await axios.post(
                     `https://partner.shopeemobile.com${updatePath}`,
                     {
                         item_id: item.item_id,
                         video_info: []
                     },
-                    { params: { partner_id, timestamp: ts5, access_token, shop_id, sign: sign5 } }
+                    { params: { partner_id, timestamp: tsClear, access_token, shop_id, sign: signClear } }
                 )
 
                 console.log("🧹 Cleared old video")
 
                 await sleep(3000)
+
+                // ADD VIDEO
+                const tsAdd = Math.floor(Date.now() / 1000)
+
+                const signAdd = crypto
+                    .createHmac("sha256", partner_key)
+                    .update(partner_id + updatePath + tsAdd + access_token + shop_id)
+                    .digest("hex")
 
                 await axios.post(
                     `https://partner.shopeemobile.com${updatePath}`,
@@ -1131,18 +1120,17 @@ app.post("/update_item_media", async (req, res) => {
                         item_id: item.item_id,
                         video_info: [
                             {
-                                video_upload_id: video_upload_id,
-                                video_url: "" // 👈 thêm dòng này
+                                video_upload_id: video_upload_id
                             }
                         ]
                     },
                     {
                         params: {
                             partner_id,
-                            timestamp: ts5,
+                            timestamp: tsAdd,
                             access_token,
                             shop_id,
-                            sign: sign5
+                            sign: signAdd
                         }
                     }
                 )
