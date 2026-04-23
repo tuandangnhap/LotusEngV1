@@ -1076,66 +1076,48 @@ app.post("/update_item_media", async (req, res) => {
 
                     if (status === "SUCCEEDED") {
                         console.log("🎯 VIDEO READY")
-                        await sleep(5000)
+                        await sleep(15000)
                         break
                     }
                 }
 
-// =========================
-// 6. UPDATE ITEM (DÙNG upload_id)
-// =========================
+                // =========================
+                // 6. UPDATE ITEM (DÙNG upload_id)
+                // =========================
                 const updatePath = "/api/v2/product/update_item"
-                // CLEAR VIDEO
-                const tsClear = Math.floor(Date.now() / 1000)
+                // =========================
+                // 6. ADD VIDEO (KHÔNG CLEAR)
+                // =========================
+                const tsAdd = Math.floor(Date.now() / 1000)
 
-                const signClear = crypto
+                const signAdd = crypto
                     .createHmac("sha256", partner_key)
-                    .update(partner_id + updatePath + tsClear + access_token + shop_id)
+                    .update(partner_id + updatePath + tsAdd + access_token + shop_id)
                     .digest("hex")
 
-                await axios.post(
+                const updateRes = await axios.post(
                     `https://partner.shopeemobile.com${updatePath}`,
                     {
                         item_id: item.item_id,
-                        video_info: []
+                        video_info: [
+                            {
+                                video_upload_id: video_upload_id,
+                                video_position: 0 // 🔥 thêm dòng này
+                            }
+                        ]
                     },
-                    { params: { partner_id, timestamp: tsClear, access_token, shop_id, sign: signClear } }
+                    {
+                        params: {
+                            partner_id,
+                            timestamp: tsAdd,
+                            access_token,
+                            shop_id,
+                            sign: signAdd
+                        }
+                    }
                 )
 
-                console.log("🧹 Cleared old video")
-
-                // await sleep(9000)
-
-                // // ADD VIDEO
-                // const tsAdd = Math.floor(Date.now() / 1000)
-                //
-                // const signAdd = crypto
-                //     .createHmac("sha256", partner_key)
-                //     .update(partner_id + updatePath + tsAdd + access_token + shop_id)
-                //     .digest("hex")
-                //
-                // await axios.post(
-                //     `https://partner.shopeemobile.com${updatePath}`,
-                //     {
-                //         item_id: item.item_id,
-                //         video_info: [
-                //             {
-                //                 video_upload_id: video_upload_id,
-                //                 video_position: 0
-                //             }
-                //         ]
-                //     },
-                //     {
-                //         params: {
-                //             partner_id,
-                //             timestamp: tsAdd,
-                //             access_token,
-                //             shop_id,
-                //             sign: signAdd
-                //         }
-                //     }
-                // )
-                // console.log("✅ DONE:", item.item_id)
+                console.log("🟢 UPDATE RESPONSE:", updateRes.data)
 
             } catch (e) {
 
