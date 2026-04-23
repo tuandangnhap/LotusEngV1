@@ -53,15 +53,8 @@ function trimVideo(inputPath, outputPath) {
 
             .outputOptions([
                 "-preset ultrafast",
-                "-pix_fmt yuv420p",
-                "-profile:v main",
-                "-level 3.1",
+                "-crf 32",
                 "-movflags +faststart",
-                "-r 24",
-                "-g 48",
-                "-b:v 800k",
-                "-maxrate 1000k",
-                "-bufsize 1200k",
                 "-vf scale=720:-2"
             ])
 
@@ -1117,10 +1110,11 @@ app.post("/update_item_media", async (req, res) => {
 
                 // =========================
                 // =========================
-// WAIT CDN DONE
-// =========================
-                if (finalUrls.length === 0) {
-                    throw new Error("Video has no URL (CDN not ready)")
+                // WAIT CDN DONE
+                // =========================
+                let finalUrls = finalUrls || []
+                if (!videoReady) {
+                    throw new Error("Video not usable yet")
                 }
 
 // 👉 chờ thêm cho chắc
