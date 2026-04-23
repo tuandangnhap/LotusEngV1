@@ -1101,6 +1101,47 @@ app.post("/update_item_media", async (req, res) => {
 
 // =========================
 // UPDATE FUNCTION (LOG CHUẨN)
+                async function waitUntilVideoCleared(item_id) {
+
+                    for (let i = 0; i < 10; i++) {
+
+                        await sleep(2000)
+
+                        const path = "/api/v2/product/get_item_base_info"
+                        const ts = Math.floor(Date.now() / 1000)
+
+                        const sign = crypto
+                            .createHmac("sha256", partner_key)
+                            .update(partner_id + path + ts + access_token + shop_id)
+                            .digest("hex")
+
+                        const res = await axios.get(
+                            `https://partner.shopeemobile.com${path}`,
+                            {
+                                params: {
+                                    partner_id,
+                                    timestamp: ts,
+                                    access_token,
+                                    shop_id,
+                                    sign,
+                                    item_id_list: String(item_id),
+                                    response_optional_fields: "video_info"
+                                }
+                            }
+                        )
+
+                        const video = res.data?.response?.item_list?.[0]?.video_info
+
+                        console.log("🔍 CHECK CLEAR:", video)
+
+                        if (!video || video.length === 0) {
+                            console.log("✅ VIDEO CLEARED CONFIRMED")
+                            return
+                        }
+                    }
+
+                    throw new Error("❌ CLEAR VIDEO TIMEOUT")
+                }
 // =========================
                 async function updateVideo() {
 
@@ -1114,11 +1155,11 @@ app.post("/update_item_media", async (req, res) => {
                         .update(partner_id + "/api/v2/product/update_item" + ts1 + access_token + shop_id)
                         .digest("hex")
 
-                    await axios.post(
+                    const clearRes = await axios.post(
                         "https://partner.shopeemobile.com/api/v2/product/update_item",
                         {
                             item_id: item.item_id,
-                            video_info: [] // 👈 CLEAR
+                            video_info: []
                         },
                         {
                             params: {
@@ -1131,14 +1172,19 @@ app.post("/update_item_media", async (req, res) => {
                         }
                     )
 
-                    console.log("🧹 CLEARED OLD VIDEO")
+                    console.log("🧹 CLEARED OLD VIDEO:", JSON.stringify(clearRes.data, null, 2))
 
-                    // delay để Shopee sync
-                    await new Promise(r => setTimeout(r, 2000))
-
+                    if (clearRes.data.error) {
+                        throw new Error("CLEAR VIDEO FAILED")
+                    }
 
                     // =========================
-                    // STEP 2: ADD NEW VIDEO
+                    // 🔥 STEP 2: WAIT CLEAR THẬT
+                    // =========================
+                    await waitUntilVideoCleared(item.item_id)
+
+                    // =========================
+                    // STEP 3: ADD NEW VIDEO
                     // =========================
                     const ts2 = Math.floor(Date.now() / 1000)
 
@@ -1147,7 +1193,7 @@ app.post("/update_item_media", async (req, res) => {
                         .update(partner_id + "/api/v2/product/update_item" + ts2 + access_token + shop_id)
                         .digest("hex")
 
-                    const res = await axios.post(
+                    const addRes = await axios.post(
                         "https://partner.shopeemobile.com/api/v2/product/update_item",
                         {
                             item_id: item.item_id,
@@ -1168,9 +1214,13 @@ app.post("/update_item_media", async (req, res) => {
                         }
                     )
 
-                    console.log("🟢 ADD NEW VIDEO:", JSON.stringify(res.data, null, 2))
+                    console.log("🟢 ADD NEW VIDEO:", JSON.stringify(addRes.data, null, 2))
 
-                    return res.data
+                    if (addRes.data.error) {
+                        throw new Error("ADD VIDEO FAILED")
+                    }
+
+                    return addRes.data
                 }
 
 // =========================
@@ -1215,8 +1265,15 @@ app.post("/update_item_media", async (req, res) => {
 // RUN UPDATE + CHECK
 // =========================
                 await updateVideo()
-                await sleep(5000) // hoặc 5000
-                await checkItem()
+
+// 🔥 chờ Shopee attach video
+                await sleep(8000)
+
+                const itemData = await checkItem()
+
+                const video = itemData?.response?.item_list?.[0]?.video_info
+
+                console.log("🎥 FINAL VIDEO:", video)
 
             } catch (e) {
 
