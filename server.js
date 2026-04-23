@@ -58,10 +58,6 @@ function trimVideo(inputPath, outputPath) {
                 "-vf scale=720:-2"
             ])
 
-            .on("progress", (p) => {
-                console.log(`⏳ Encode: ${p.percent?.toFixed(2)}%`)
-            })
-
             .on("end", () => {
                 console.log("✅ Encode done")
                 resolve(outputPath)
@@ -1124,11 +1120,6 @@ app.post("/update_item_media", async (req, res) => {
                 if (!videoReady) {
                     throw new Error("Video not usable yet (no URL)")
                 }
-
-// 👉 chờ thêm cho chắc
-                await sleep(5000)
-
-                const updatePath = "/api/v2/product/update_item"
 
 // =========================
 // UPDATE FUNCTION (LOG CHUẨN)
