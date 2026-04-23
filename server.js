@@ -1159,7 +1159,11 @@ app.post("/update_item_media", async (req, res) => {
                         "https://partner.shopeemobile.com/api/v2/product/update_item",
                         {
                             item_id: item.item_id,
-                            video_info: []
+                            video_info: [
+                                {
+                                    video_upload_id: ""
+                                }
+                            ]
                         },
                         {
                             params: {
