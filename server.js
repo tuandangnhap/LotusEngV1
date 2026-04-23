@@ -1116,57 +1116,21 @@ app.post("/update_item_media", async (req, res) => {
                 }
 
                 // =========================
-                // 5.1 WAIT CDN (LẤY URL)
                 // =========================
-                console.log("⏳ Waiting for CDN URL...")
-
-                let finalUrls = []
-
-                for (let i = 0; i < 30; i++) {
-
-                    await sleep(3000)
-
-                    const ts = Math.floor(Date.now() / 1000)
-                    const path = "/api/v2/media_space/get_video_upload_result"
-
-                    const sign = crypto
-                        .createHmac("sha256", partner_key)
-                        .update(partner_id + path + ts + access_token + shop_id)
-                        .digest("hex")
-
-                    const res = await axios.get(
-                        `https://partner.shopeemobile.com${path}`,
-                        {
-                            params: {
-                                partner_id,
-                                timestamp: ts,
-                                access_token,
-                                shop_id,
-                                video_upload_id,
-                                sign
-                            }
-                        }
-                    )
-
-                    finalUrls = res.data?.response?.video_url_list || []
-
-                    console.log("🔄 CDN check:", finalUrls)
-
-                    if (finalUrls.length > 0) {
-                        console.log("🎉 GOT VIDEO URL")
-                        break
-                    }
-                }
-
+// WAIT CDN DONE
+// =========================
                 if (finalUrls.length === 0) {
                     throw new Error("Video has no URL (CDN not ready)")
                 }
 
-
-                await sleep(10000)
+// 👉 chờ thêm cho chắc
+                await sleep(20000)
 
                 const updatePath = "/api/v2/product/update_item"
 
+// =========================
+// UPDATE FUNCTION (LOG CHUẨN)
+// =========================
                 async function updateVideo() {
 
                     const tsUpdate = Math.floor(Date.now() / 1000)
@@ -1176,34 +1140,89 @@ app.post("/update_item_media", async (req, res) => {
                         .update(partner_id + updatePath + tsUpdate + access_token + shop_id)
                         .digest("hex")
 
-                    const res = await axios.post(
-                        `https://partner.shopeemobile.com${updatePath}`,
-                        {
-                            item_id: item.item_id,
-                            video_info: [
-                                {
-                                    video_upload_id: video_upload_id
-                                }
-                            ]
-                        },
-                        {
-                            params: {
-                                partner_id,
-                                timestamp: tsUpdate,
-                                access_token,
-                                shop_id,
-                                sign: signUpdate
-                            }
-                        }
-                    )
+                    const url = `https://partner.shopeemobile.com${updatePath}`
 
-                    console.log("🟢 UPDATE:", res.data)
+                    const params = {
+                        partner_id,
+                        timestamp: tsUpdate,
+                        access_token,
+                        shop_id,
+                        sign: signUpdate
+                    }
+
+                    const body = {
+                        item_id: item.item_id,
+                        video_info: [
+                            {
+                                video_upload_id: video_upload_id
+                            }
+                        ]
+                    }
+
+                    // 🔥 LOG REQUEST
+                    console.log("========== 🟡 UPDATE_ITEM REQUEST ==========")
+                    console.log("Time:", new Date().toISOString())
+                    console.log("URL:", url)
+                    console.log("Params:", JSON.stringify(params, null, 2))
+                    console.log("Body:", JSON.stringify(body, null, 2))
+
+                    const res = await axios.post(url, body, { params })
+
+                    // 🔥 LOG RESPONSE
+                    console.log("========== 🟢 UPDATE_ITEM RESPONSE ==========")
+                    console.log(JSON.stringify(res.data, null, 2))
+
+                    return res.data
                 }
 
-// gọi 2 lần cho chắc
+// =========================
+// CHECK ITEM FUNCTION
+// =========================
+                async function checkItem() {
+
+                    const path = "/api/v2/product/get_item_base_info"
+                    const ts = Math.floor(Date.now() / 1000)
+
+                    const signCheck = crypto
+                        .createHmac("sha256", partner_key)
+                        .update(partner_id + path + ts + access_token + shop_id)
+                        .digest("hex")
+
+                    const url = `https://partner.shopeemobile.com${path}`
+
+                    const params = {
+                        partner_id,
+                        timestamp: ts,
+                        access_token,
+                        shop_id,
+                        sign: signCheck,
+                        item_id_list: item.item_id,
+                        response_optional_fields: "video_info"
+                    }
+
+                    console.log("========== 🟡 GET_ITEM_BASE REQUEST ==========")
+                    console.log("Time:", new Date().toISOString())
+                    console.log("URL:", url)
+                    console.log("Params:", JSON.stringify(params, null, 2))
+
+                    const res = await axios.get(url, { params })
+
+                    console.log("========== 🟢 GET_ITEM_BASE RESPONSE ==========")
+                    console.log(JSON.stringify(res.data, null, 2))
+
+                    return res.data
+                }
+
+// =========================
+// RUN UPDATE + CHECK
+// =========================
                 await updateVideo()
                 await sleep(5000)
                 await updateVideo()
+
+// 👉 verify với Shopee
+                await sleep(5000)
+                await checkItem()
 
             } catch (e) {
 
