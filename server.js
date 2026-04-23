@@ -1056,15 +1056,17 @@ app.post("/update_item_media", async (req, res) => {
                 // =========================
 // 5. WAIT VIDEO READY THẬT
 // =========================
+                // =========================
+// WAIT VIDEO READY THẬT (FIX CHUẨN)
+// =========================
                 let videoReady = false
-                let videoUrls = []
+                let finalUrls = []
 
                 for (let i = 0; i < 60; i++) {
 
-                    await sleep(2000)
+                    await sleep(3000)
 
                     const ts = Math.floor(Date.now() / 1000)
-
                     const path = "/api/v2/media_space/get_video_upload_result"
 
                     const sign = crypto
@@ -1072,7 +1074,7 @@ app.post("/update_item_media", async (req, res) => {
                         .update(partner_id + path + ts + access_token + shop_id)
                         .digest("hex")
 
-                    const resultRes = await axios.get(
+                    const res = await axios.get(
                         `https://partner.shopeemobile.com${path}`,
                         {
                             params: {
@@ -1086,8 +1088,8 @@ app.post("/update_item_media", async (req, res) => {
                         }
                     )
 
-                    const status = resultRes.data?.response?.status
-                    const urls = resultRes.data?.response?.video_url_list || []
+                    const status = res.data?.response?.status
+                    const urls = res.data?.response?.video_url_list || []
 
                     console.log(`🎬 Status [${i}]:`, status)
                     console.log(`🔗 URL [${i}]:`, urls)
@@ -1095,26 +1097,18 @@ app.post("/update_item_media", async (req, res) => {
                     if (status === "FAILED") {
                         throw new Error("Video FAILED")
                     }
-                    if (status === "SUCCEEDED") {
+
+                    // 🔥 CHỈ OK KHI CÓ URL
+                    if (status === "SUCCEEDED" && urls.length > 0) {
                         console.log("🎯 VIDEO READY (HAS URL)")
                         videoReady = true
-                        videoUrls = urls
+                        finalUrls = urls
                         break
                     }
                 }
 
                 if (!videoReady) {
-                    console.log("❌ FINAL URL:", videoUrls)
                     throw new Error("Video not usable yet (no URL)")
-                }
-
-                // =========================
-                // =========================
-                // WAIT CDN DONE
-                // =========================
-                let finalUrls = finalUrls || []
-                if (!videoReady) {
-                    throw new Error("Video not usable yet")
                 }
 
 // 👉 chờ thêm cho chắc
