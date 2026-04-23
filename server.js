@@ -1044,6 +1044,7 @@ app.post("/update_item_media", async (req, res) => {
 // 5. WAIT VIDEO READY THẬT
 // =========================
                 let videoReady = false
+                let videoUrls = []
 
                 for (let i = 0; i < 60; i++) {
 
@@ -1051,13 +1052,15 @@ app.post("/update_item_media", async (req, res) => {
 
                     const ts = Math.floor(Date.now() / 1000)
 
+                    const path = "/api/v2/media_space/get_video_upload_result"
+
                     const sign = crypto
                         .createHmac("sha256", partner_key)
-                        .update(partner_id + "/api/v2/media_space/get_video_upload_result" + ts + access_token + shop_id)
+                        .update(partner_id + path + ts + access_token + shop_id)
                         .digest("hex")
 
                     const resultRes = await axios.get(
-                        `https://partner.shopeemobile.com/api/v2/media_space/get_video_upload_result`,
+                        `https://partner.shopeemobile.com${path}`,
                         {
                             params: {
                                 partner_id,
@@ -1071,24 +1074,29 @@ app.post("/update_item_media", async (req, res) => {
                     )
 
                     const status = resultRes.data?.response?.status
+                    const urls = resultRes.data?.response?.video_url_list || []
 
                     console.log(`🎬 Status [${i}]:`, status)
+                    console.log(`🔗 URL [${i}]:`, urls)
 
                     if (status === "FAILED") {
                         throw new Error("Video FAILED")
                     }
 
-                    // 🔥 FIX CHÍNH Ở ĐÂY
-                    if (status === "SUCCEEDED") {
-                        console.log("🎯 VIDEO READY")
+                    // 🔥 CHUẨN NHẤT: phải có URL
+                    if (status === "SUCCEEDED" && urls.length > 0) {
+                        console.log("🎯 VIDEO READY (HAS URL)")
                         videoReady = true
+                        videoUrls = urls
                         break
                     }
                 }
 
                 if (!videoReady) {
-                    throw new Error("Video not ready")
+                    console.log("❌ FINAL URL:", videoUrls)
+                    throw new Error("Video not usable yet (no URL)")
                 }
+
 
                 await sleep(20000)
 
@@ -1109,8 +1117,7 @@ app.post("/update_item_media", async (req, res) => {
                             item_id: item.item_id,
                             video_info: [
                                 {
-                                    video_upload_id: video_upload_id,
-                                    video_position: 0
+                                    video_upload_id: video_upload_id
                                 }
                             ]
                         },
