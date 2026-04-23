@@ -1104,7 +1104,7 @@ app.post("/update_item_media", async (req, res) => {
 
                 console.log("🧹 Cleared old video")
 
-                await sleep(3000)
+                await sleep(9000)
 
                 // ADD VIDEO
                 const tsAdd = Math.floor(Date.now() / 1000)
