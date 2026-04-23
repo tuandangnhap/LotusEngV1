@@ -52,14 +52,17 @@ function trimVideo(inputPath, outputPath) {
             .audioCodec("aac")
 
             .outputOptions([
+                "-preset ultrafast",
                 "-pix_fmt yuv420p",
                 "-profile:v main",
                 "-level 3.1",
                 "-movflags +faststart",
-                "-r 30",
-                "-g 60",
-                "-b:v 1500k",
-                "-b:a 128k"
+                "-r 24",
+                "-g 48",
+                "-b:v 800k",
+                "-maxrate 1000k",
+                "-bufsize 1200k",
+                "-vf scale=720:-2"
             ])
 
             .on("progress", (p) => {
