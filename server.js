@@ -1090,46 +1090,48 @@ app.post("/update_item_media", async (req, res) => {
                     throw new Error("Video not ready")
                 }
 
-// 🔥 delay thêm để tránh Shopee lag
                 await sleep(20000)
 
-                // =========================
-                // 6. UPDATE ITEM (DÙNG upload_id)
-                // =========================
                 const updatePath = "/api/v2/product/update_item"
-                // =========================
-                // 6. ADD VIDEO (KHÔNG CLEAR)
-                // =========================
-                const tsAdd = Math.floor(Date.now() / 1000)
 
-                const sign = crypto
-                    .createHmac("sha256", partner_key)
-                    .update(partner_id + "/api/v2/product/update_item" + ts + access_token + shop_id)
-                    .digest("hex")
+                async function updateVideo() {
 
-                const res = await axios.post(
-                    `https://partner.shopeemobile.com/api/v2/product/update_item`,
-                    {
-                        item_id: item.item_id,
-                        video_info: [
-                            {
-                                video_upload_id: video_upload_id,
-                                video_position: 0
+                    const tsUpdate = Math.floor(Date.now() / 1000)
+
+                    const signUpdate = crypto
+                        .createHmac("sha256", partner_key)
+                        .update(partner_id + updatePath + tsUpdate + access_token + shop_id)
+                        .digest("hex")
+
+                    const res = await axios.post(
+                        `https://partner.shopeemobile.com${updatePath}`,
+                        {
+                            item_id: item.item_id,
+                            video_info: [
+                                {
+                                    video_upload_id: video_upload_id,
+                                    video_position: 0
+                                }
+                            ]
+                        },
+                        {
+                            params: {
+                                partner_id,
+                                timestamp: tsUpdate,
+                                access_token,
+                                shop_id,
+                                sign: signUpdate
                             }
-                        ]
-                    },
-                    {
-                        params: {
-                            partner_id,
-                            timestamp: ts,
-                            access_token,
-                            shop_id,
-                            sign
                         }
-                    }
-                )
+                    )
 
-                console.log("🟢 UPDATE RESPONSE:", res.data)
+                    console.log("🟢 UPDATE:", res.data)
+                }
+
+// gọi 2 lần cho chắc
+                await updateVideo()
+                await sleep(5000)
+                await updateVideo()
 
             } catch (e) {
 
