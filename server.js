@@ -1049,25 +1049,28 @@ app.post("/update_item_media", async (req, res) => {
 
                     await sleep(2000)
 
+                    const ts = Math.floor(Date.now() / 1000)
+
+                    const sign = crypto
+                        .createHmac("sha256", partner_key)
+                        .update(partner_id + "/api/v2/media_space/get_video_upload_result" + ts + access_token + shop_id)
+                        .digest("hex")
+
                     const resultRes = await axios.get(
                         `https://partner.shopeemobile.com/api/v2/media_space/get_video_upload_result`,
                         {
                             params: {
                                 partner_id,
-                                timestamp: Math.floor(Date.now() / 1000),
+                                timestamp: ts,
                                 access_token,
                                 shop_id,
                                 video_upload_id,
-                                sign: crypto
-                                    .createHmac("sha256", partner_key)
-                                    .update(partner_id + "/api/v2/media_space/get_video_upload_result" + Math.floor(Date.now() / 1000) + access_token + shop_id)
-                                    .digest("hex")
+                                sign
                             }
                         }
                     )
 
                     const status = resultRes.data?.response?.status
-                    const urls = resultRes.data?.response?.video_url_list
 
                     console.log(`🎬 Status [${i}]:`, status)
 
@@ -1075,8 +1078,9 @@ app.post("/update_item_media", async (req, res) => {
                         throw new Error("Video FAILED")
                     }
 
-                    if (status === "SUCCEEDED" && urls && urls.length > 0) {
-                        console.log("🎯 VIDEO READY (HAS URL)")
+                    // 🔥 FIX CHÍNH Ở ĐÂY
+                    if (status === "SUCCEEDED") {
+                        console.log("🎯 VIDEO READY")
                         videoReady = true
                         break
                     }
@@ -1086,7 +1090,7 @@ app.post("/update_item_media", async (req, res) => {
                     throw new Error("Video not ready")
                 }
 
-// 🔥 QUAN TRỌNG
+// 🔥 delay thêm để tránh Shopee lag
                 await sleep(20000)
 
                 // =========================
