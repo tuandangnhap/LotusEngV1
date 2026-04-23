@@ -323,26 +323,6 @@ app.get("/download_media", async (req, res) => {
         res.end()
     }
 })
-
-// app.get("/total_parts", (req, res) => {
-//
-//     const cache = JSON.parse(fs.readFileSync("cache.json"))
-//     const items = Object.values(cache)
-//
-//     const tasks = []
-//
-//     items.forEach(item => {
-//
-//         item.images.forEach(url => tasks.push(url))
-//         if (item.video_url) tasks.push(item.video_url)
-//
-//     })
-//
-//     const size = 100  // mỗi part ~200 file
-//     const total = Math.ceil(tasks.length / size)
-//
-//     res.json({ total })
-// })
 app.get("/total_parts", (req, res) => {
     const cache = JSON.parse(fs.readFileSync("cache.json"))
     const items = Object.values(cache)
