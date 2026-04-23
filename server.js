@@ -1040,46 +1040,54 @@ app.post("/update_item_media", async (req, res) => {
                 // =========================
 // 5. WAIT RESULT
 // =========================
-                const resultPath = "/api/v2/media_space/get_video_upload_result"
+                // =========================
+// 5. WAIT VIDEO READY THẬT
+// =========================
+                let videoReady = false
 
                 for (let i = 0; i < 60; i++) {
 
                     await sleep(2000)
 
-                    const ts4 = Math.floor(Date.now() / 1000)
-
-                    const sign4 = crypto
-                        .createHmac("sha256", partner_key)
-                        .update(partner_id + resultPath + ts4 + access_token + shop_id)
-                        .digest("hex")
-
                     const resultRes = await axios.get(
-                        `https://partner.shopeemobile.com${resultPath}`,
+                        `https://partner.shopeemobile.com/api/v2/media_space/get_video_upload_result`,
                         {
                             params: {
                                 partner_id,
-                                shop_id,
+                                timestamp: Math.floor(Date.now() / 1000),
                                 access_token,
-                                timestamp: ts4,
-                                sign: sign4,
-                                video_upload_id
+                                shop_id,
+                                video_upload_id,
+                                sign: crypto
+                                    .createHmac("sha256", partner_key)
+                                    .update(partner_id + "/api/v2/media_space/get_video_upload_result" + Math.floor(Date.now() / 1000) + access_token + shop_id)
+                                    .digest("hex")
                             }
                         }
                     )
 
                     const status = resultRes.data?.response?.status
+                    const urls = resultRes.data?.response?.video_url_list
+
                     console.log(`🎬 Status [${i}]:`, status)
 
                     if (status === "FAILED") {
                         throw new Error("Video FAILED")
                     }
 
-                    if (status === "SUCCEEDED") {
-                        console.log("🎯 VIDEO READY")
-                        await sleep(15000)
+                    if (status === "SUCCEEDED" && urls && urls.length > 0) {
+                        console.log("🎯 VIDEO READY (HAS URL)")
+                        videoReady = true
                         break
                     }
                 }
+
+                if (!videoReady) {
+                    throw new Error("Video not ready")
+                }
+
+// 🔥 QUAN TRỌNG
+                await sleep(20000)
 
                 // =========================
                 // 6. UPDATE ITEM (DÙNG upload_id)
@@ -1090,35 +1098,34 @@ app.post("/update_item_media", async (req, res) => {
                 // =========================
                 const tsAdd = Math.floor(Date.now() / 1000)
 
-                const signAdd = crypto
+                const sign = crypto
                     .createHmac("sha256", partner_key)
-                    .update(partner_id + updatePath + tsAdd + access_token + shop_id)
+                    .update(partner_id + "/api/v2/product/update_item" + ts + access_token + shop_id)
                     .digest("hex")
 
-                const updateRes = await axios.post(
-                    `https://partner.shopeemobile.com${updatePath}`,
+                const res = await axios.post(
+                    `https://partner.shopeemobile.com/api/v2/product/update_item`,
                     {
                         item_id: item.item_id,
                         video_info: [
                             {
                                 video_upload_id: video_upload_id,
-                                video_position: 0 // 🔥 thêm dòng này
+                                video_position: 0
                             }
                         ]
                     },
                     {
                         params: {
                             partner_id,
-                            timestamp: tsAdd,
+                            timestamp: ts,
                             access_token,
                             shop_id,
-                            sign: signAdd
+                            sign
                         }
                     }
                 )
 
-                console.log("🟢 UPDATE RESPONSE:", updateRes.data)
-                console.log(JSON.stringify(item.response.video_info, null, 2))
+                console.log("🟢 UPDATE RESPONSE:", res.data)
 
             } catch (e) {
 
