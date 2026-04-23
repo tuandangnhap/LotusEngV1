@@ -1107,7 +1107,7 @@ app.post("/update_item_media", async (req, res) => {
                     }, null, 2))
 
                     console.log("========== 🟢 GET_VIDEO_UPLOAD_RESULT RESPONSE ==========")
-                    console.log(JSON.stringify(resultRes.data, null, 2))
+                    console.log(JSON.stringify(res.data, null, 2))
                     if (status === "FAILED") {
                         throw new Error("Video FAILED")
                     }
