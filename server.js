@@ -52,10 +52,8 @@ function trimVideo(inputPath, outputPath) {
             .audioCodec("aac")
 
             .outputOptions([
-                "-preset ultrafast",
-                "-crf 32",
-                "-movflags +faststart",
-                "-vf scale=720:-2"
+                "-c copy", // giữ nguyên định dạng (nhanh, không re-encode)
+                "-movflags +faststart"
             ])
 
             .on("end", () => {
