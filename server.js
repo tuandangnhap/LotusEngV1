@@ -1126,7 +1126,7 @@ app.post("/update_item_media", async (req, res) => {
                 }
 
 // 👉 chờ thêm cho chắc
-                await sleep(20000)
+                await sleep(5000)
 
                 const updatePath = "/api/v2/product/update_item"
 
@@ -1225,11 +1225,7 @@ app.post("/update_item_media", async (req, res) => {
 // RUN UPDATE + CHECK
 // =========================
                 await updateVideo()
-                await sleep(5000)
                 await updateVideo()
-
-// 👉 verify với Shopee
-                await sleep(5000)
                 await checkItem()
 
             } catch (e) {
