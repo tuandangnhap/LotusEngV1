@@ -1082,9 +1082,7 @@ app.post("/update_item_media", async (req, res) => {
                     if (status === "FAILED") {
                         throw new Error("Video FAILED")
                     }
-
-                    // 🔥 CHUẨN NHẤT: phải có URL
-                    if (status === "SUCCEEDED" && urls.length > 0) {
+                    if (status === "SUCCEEDED") {
                         console.log("🎯 VIDEO READY (HAS URL)")
                         videoReady = true
                         videoUrls = urls
@@ -1097,8 +1095,55 @@ app.post("/update_item_media", async (req, res) => {
                     throw new Error("Video not usable yet (no URL)")
                 }
 
+                // =========================
+                // 5.1 WAIT CDN (LẤY URL)
+                // =========================
+                console.log("⏳ Waiting for CDN URL...")
 
-                await sleep(20000)
+                let finalUrls = []
+
+                for (let i = 0; i < 30; i++) {
+
+                    await sleep(3000)
+
+                    const ts = Math.floor(Date.now() / 1000)
+                    const path = "/api/v2/media_space/get_video_upload_result"
+
+                    const sign = crypto
+                        .createHmac("sha256", partner_key)
+                        .update(partner_id + path + ts + access_token + shop_id)
+                        .digest("hex")
+
+                    const res = await axios.get(
+                        `https://partner.shopeemobile.com${path}`,
+                        {
+                            params: {
+                                partner_id,
+                                timestamp: ts,
+                                access_token,
+                                shop_id,
+                                video_upload_id,
+                                sign
+                            }
+                        }
+                    )
+
+                    finalUrls = res.data?.response?.video_url_list || []
+
+                    console.log("🔄 CDN check:", finalUrls)
+
+                    if (finalUrls.length > 0) {
+                        console.log("🎉 GOT VIDEO URL")
+                        break
+                    }
+                }
+
+                if (finalUrls.length === 0) {
+                    throw new Error("Video has no URL (CDN not ready)")
+                }
+
+
+                await sleep(10000)
 
                 const updatePath = "/api/v2/product/update_item"
 
