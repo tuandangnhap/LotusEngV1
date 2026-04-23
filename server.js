@@ -1137,6 +1137,8 @@ app.post("/update_item_media", async (req, res) => {
 
                     const tsUpdate = Math.floor(Date.now() / 1000)
 
+                    const updatePath = "/api/v2/product/update_item"
+
                     const signUpdate = crypto
                         .createHmac("sha256", partner_key)
                         .update(partner_id + updatePath + tsUpdate + access_token + shop_id)
@@ -1161,16 +1163,20 @@ app.post("/update_item_media", async (req, res) => {
                         ]
                     }
 
-                    // 🔥 LOG REQUEST
+                    // =========================
+                    // 🟡 REQUEST LOG
+                    // =========================
                     console.log("========== 🟡 UPDATE_ITEM REQUEST ==========")
                     console.log("Time:", new Date().toISOString())
-                    console.log("URL:", url)
+                    console.log("Request URL:", url)
                     console.log("Params:", JSON.stringify(params, null, 2))
                     console.log("Body:", JSON.stringify(body, null, 2))
 
                     const res = await axios.post(url, body, { params })
 
-                    // 🔥 LOG RESPONSE
+                    // =========================
+                    // 🟢 RESPONSE LOG
+                    // =========================
                     console.log("========== 🟢 UPDATE_ITEM RESPONSE ==========")
                     console.log(JSON.stringify(res.data, null, 2))
 
@@ -1204,7 +1210,7 @@ app.post("/update_item_media", async (req, res) => {
 
                     console.log("========== 🟡 GET_ITEM_BASE REQUEST ==========")
                     console.log("Time:", new Date().toISOString())
-                    console.log("URL:", url)
+                    console.log("Request URL:", url)
                     console.log("Params:", JSON.stringify(params, null, 2))
 
                     const res = await axios.get(url, { params })
