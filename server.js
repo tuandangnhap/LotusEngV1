@@ -46,14 +46,26 @@ function trimVideo(inputPath, outputPath) {
     return new Promise((resolve, reject) => {
         ffmpeg(inputPath)
             .setStartTime(0)
-            .setDuration(58)
+            .setDuration(55) // 🔥 đổi 55s cho an toàn
+
+            .videoCodec("libx264")
+            .audioCodec("aac")
+
             .outputOptions([
-                "-c copy",              // ⚡ cực nhanh
-                "-movflags +faststart"
+                "-pix_fmt yuv420p",
+                "-profile:v main",
+                "-level 3.1",
+                "-movflags +faststart",
+                "-r 30",
+                "-g 60",
+                "-b:v 1500k",
+                "-b:a 128k"
             ])
+
             .save(outputPath)
+
             .on("end", () => {
-                console.log("✂️ Trim done")
+                console.log("✂️ Trim + re-encode done")
                 resolve(outputPath)
             })
             .on("error", (err) => {
@@ -874,7 +886,7 @@ app.post("/update_item_media", async (req, res) => {
                 console.log("⏱ Duration:", duration)
 
                 if (duration > 58) {
-                    console.log("✂️ Trim to 58s...")
+                    console.log("✂️ Trim to 55s...")
                     await trimVideo(tempInput, tempOutput)
                     finalPath = tempOutput
                 }
