@@ -1126,50 +1126,71 @@ app.post("/update_item_media", async (req, res) => {
 // =========================
                 async function updateVideo() {
 
-                    const tsUpdate = Math.floor(Date.now() / 1000)
+                    // =========================
+                    // STEP 1: CLEAR OLD VIDEO
+                    // =========================
+                    const ts1 = Math.floor(Date.now() / 1000)
 
-                    const updatePath = "/api/v2/product/update_item"
-
-                    const signUpdate = crypto
+                    const sign1 = crypto
                         .createHmac("sha256", partner_key)
-                        .update(partner_id + updatePath + tsUpdate + access_token + shop_id)
+                        .update(partner_id + "/api/v2/product/update_item" + ts1 + access_token + shop_id)
                         .digest("hex")
 
-                    const url = `https://partner.shopeemobile.com${updatePath}`
-
-                    const params = {
-                        partner_id,
-                        timestamp: tsUpdate,
-                        access_token,
-                        shop_id,
-                        sign: signUpdate
-                    }
-
-                    const body = {
-                        item_id: item.item_id,
-                        video_info: [
-                            {
-                                video_upload_id: video_upload_id
+                    await axios.post(
+                        "https://partner.shopeemobile.com/api/v2/product/update_item",
+                        {
+                            item_id: item.item_id,
+                            video_info: [] // 👈 CLEAR
+                        },
+                        {
+                            params: {
+                                partner_id,
+                                timestamp: ts1,
+                                access_token,
+                                shop_id,
+                                sign: sign1
                             }
-                        ]
-                    }
+                        }
+                    )
+
+                    console.log("🧹 CLEARED OLD VIDEO")
+
+                    // delay để Shopee sync
+                    await new Promise(r => setTimeout(r, 2000))
+
 
                     // =========================
-                    // 🟡 REQUEST LOG
+                    // STEP 2: ADD NEW VIDEO
                     // =========================
-                    console.log("========== 🟡 UPDATE_ITEM REQUEST ==========")
-                    console.log("Time:", new Date().toISOString())
-                    console.log("Request URL:", url)
-                    console.log("Params:", JSON.stringify(params, null, 2))
-                    console.log("Body:", JSON.stringify(body, null, 2))
+                    const ts2 = Math.floor(Date.now() / 1000)
 
-                    const res = await axios.post(url, body, { params })
+                    const sign2 = crypto
+                        .createHmac("sha256", partner_key)
+                        .update(partner_id + "/api/v2/product/update_item" + ts2 + access_token + shop_id)
+                        .digest("hex")
 
-                    // =========================
-                    // 🟢 RESPONSE LOG
-                    // =========================
-                    console.log("========== 🟢 UPDATE_ITEM RESPONSE ==========")
-                    console.log(JSON.stringify(res.data, null, 2))
+                    const res = await axios.post(
+                        "https://partner.shopeemobile.com/api/v2/product/update_item",
+                        {
+                            item_id: item.item_id,
+                            video_info: [
+                                {
+                                    video_upload_id: video_upload_id
+                                }
+                            ]
+                        },
+                        {
+                            params: {
+                                partner_id,
+                                timestamp: ts2,
+                                access_token,
+                                shop_id,
+                                sign: sign2
+                            }
+                        }
+                    )
+
+                    console.log("🟢 ADD NEW VIDEO:", JSON.stringify(res.data, null, 2))
 
                     return res.data
                 }
@@ -1195,7 +1216,7 @@ app.post("/update_item_media", async (req, res) => {
                         access_token,
                         shop_id,
                         sign: signCheck,
-                        item_id_list: item.item_id,
+                        item_id_list: [item.item_id],
                         response_optional_fields: "video_info"
                     }
 
@@ -1215,7 +1236,6 @@ app.post("/update_item_media", async (req, res) => {
 // =========================
 // RUN UPDATE + CHECK
 // =========================
-                await updateVideo()
                 await updateVideo()
                 await checkItem()
 
