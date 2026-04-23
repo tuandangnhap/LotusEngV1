@@ -1118,6 +1118,7 @@ app.post("/update_item_media", async (req, res) => {
                 )
 
                 console.log("🟢 UPDATE RESPONSE:", updateRes.data)
+                console.log(JSON.stringify(item.response.video_info, null, 2))
 
             } catch (e) {
 
