@@ -1144,87 +1144,31 @@ app.post("/update_item_media", async (req, res) => {
                 }
 // =========================
                 async function updateVideo() {
+                    // ===== UPDATE VIDEO (REPLACE DIRECT) =====
+                    const updatePath = "/api/v2/product/update_item"
+                    const tsUpdate = Math.floor(Date.now() / 1000)
 
-                    // =========================
-                    // STEP 1: CLEAR OLD VIDEO
-                    // =========================
-                    const ts1 = Math.floor(Date.now() / 1000)
-
-                    const sign1 = crypto
+                    const signUpdate = crypto
                         .createHmac("sha256", partner_key)
-                        .update(partner_id + "/api/v2/product/update_item" + ts1 + access_token + shop_id)
+                        .update(partner_id + updatePath + tsUpdate + access_token + shop_id)
                         .digest("hex")
 
-                    const clearRes = await axios.post(
-                        "https://partner.shopeemobile.com/api/v2/product/update_item",
-                        {
-                            item_id: item.item_id,
-                            video_info: [
-                                {
-                                    video_upload_id: ""
-                                }
-                            ]
-                        },
-                        {
-                            params: {
-                                partner_id,
-                                timestamp: ts1,
-                                access_token,
-                                shop_id,
-                                sign: sign1
+                    const updateUrl = `https://partner.shopeemobile.com${updatePath}?partner_id=${partner_id}&timestamp=${tsUpdate}&access_token=${access_token}&shop_id=${shop_id}&sign=${signUpdate}`
+
+                    console.log("🚀 UPDATE VIDEO:", item.item_id, video_upload_id)
+
+                    const updateRes = await axios.post(updateUrl, {
+                        item_id: item.item_id,
+                        video_info: [
+                            {
+                                video_upload_id: video_upload_id // 👈 VIDEO MỚI
                             }
-                        }
-                    )
+                        ]
+                    }, {
+                        timeout: 20000
+                    })
 
-                    console.log("🧹 CLEARED OLD VIDEO:", JSON.stringify(clearRes.data, null, 2))
-
-                    if (clearRes.data.error) {
-                        throw new Error("CLEAR VIDEO FAILED")
-                    }
-
-                    // =========================
-                    // 🔥 STEP 2: WAIT CLEAR THẬT
-                    // =========================
-                    await waitUntilVideoCleared(item.item_id)
-
-                    // =========================
-                    // STEP 3: ADD NEW VIDEO
-                    // =========================
-                    const ts2 = Math.floor(Date.now() / 1000)
-
-                    const sign2 = crypto
-                        .createHmac("sha256", partner_key)
-                        .update(partner_id + "/api/v2/product/update_item" + ts2 + access_token + shop_id)
-                        .digest("hex")
-
-                    const addRes = await axios.post(
-                        "https://partner.shopeemobile.com/api/v2/product/update_item",
-                        {
-                            item_id: item.item_id,
-                            video_info: [
-                                {
-                                    video_upload_id: video_upload_id
-                                }
-                            ]
-                        },
-                        {
-                            params: {
-                                partner_id,
-                                timestamp: ts2,
-                                access_token,
-                                shop_id,
-                                sign: sign2
-                            }
-                        }
-                    )
-
-                    console.log("🟢 ADD NEW VIDEO:", JSON.stringify(addRes.data, null, 2))
-
-                    if (addRes.data.error) {
-                        throw new Error("ADD VIDEO FAILED")
-                    }
-
-                    return addRes.data
+                    console.log("✅ UPDATE DONE:", updateRes.data)
                 }
 
 // =========================
