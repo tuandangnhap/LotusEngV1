@@ -1215,8 +1215,24 @@ app.post("/update_item_media", async (req, res) => {
 // RUN UPDATE + CHECK
 // =========================
                 await updateVideo()
-                await sleep(5000) // hoặc 5000
-                await checkItem()
+                await updateVideo()
+
+// 🔥 đợi Shopee xử lý video thật sự
+                for (let i = 0; i < 10; i++) {
+
+                    await sleep(5000) // 3s
+
+                    const data = await checkItem()
+
+                    const video = data?.response?.item_list?.[0]?.video_info?.[0]
+
+                    console.log("⏱ duration:", video?.duration)
+
+                    if (video && video.duration > 0) {
+                        console.log("🎯 VIDEO READY 100%")
+                        break
+                    }
+                }
 
             } catch (e) {
 
