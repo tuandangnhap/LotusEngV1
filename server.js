@@ -1194,7 +1194,7 @@ app.post("/update_item_media", async (req, res) => {
                         access_token,
                         shop_id,
                         sign: signCheck,
-                        item_id_list: [item.item_id],
+                        item_id_list: String(item.item_id),
                         response_optional_fields: "video_info"
                     }
 
@@ -1215,6 +1215,7 @@ app.post("/update_item_media", async (req, res) => {
 // RUN UPDATE + CHECK
 // =========================
                 await updateVideo()
+                await sleep(5000) // hoặc 5000
                 await checkItem()
 
             } catch (e) {
