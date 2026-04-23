@@ -905,7 +905,7 @@ app.post("/update_item_media", async (req, res) => {
 
                 const sign1 = crypto
                     .createHmac("sha256", partner_key)
-                    .update(partner_id + initPath + ts1)
+                    .update(partner_id + initPath + ts1 + access_token + shop_id)
                     .digest("hex")
 
                 const initUrl = `https://partner.shopeemobile.com${initPath}`
