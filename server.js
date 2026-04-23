@@ -1091,9 +1091,23 @@ app.post("/update_item_media", async (req, res) => {
                     const status = res.data?.response?.status
                     const urls = res.data?.response?.video_url_list || []
 
-                    console.log(`🎬 Status [${i}]:`, status)
-                    console.log(`🔗 URL [${i}]:`, urls)
+                    // =========================
+                    // LOG CHUẨN SHOPEE
+                    // =========================
+                    console.log("========== 🟡 GET_VIDEO_UPLOAD_RESULT REQUEST ==========")
+                    console.log("Time:", new Date().toISOString())
+                    console.log("Request URL:", `https://partner.shopeemobile.com${path}`)
+                    console.log("Params:", JSON.stringify({
+                        partner_id,
+                        timestamp: ts,
+                        access_token,
+                        shop_id,
+                        video_upload_id,
+                        sign
+                    }, null, 2))
 
+                    console.log("========== 🟢 GET_VIDEO_UPLOAD_RESULT RESPONSE ==========")
+                    console.log(JSON.stringify(resultRes.data, null, 2))
                     if (status === "FAILED") {
                         throw new Error("Video FAILED")
                     }
