@@ -1109,7 +1109,7 @@ app.post("/update_item_media", async (req, res) => {
                     }
 
                     // 🔥 CHỈ OK KHI CÓ URL
-                    if (status === "SUCCEEDED" && urls.length > 0) {
+                    if (status === "SUCCEEDED") {
                         console.log("🎯 VIDEO READY (HAS URL)")
                         videoReady = true
                         finalUrls = urls
