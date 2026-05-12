@@ -1100,121 +1100,147 @@ app.post("/update_item_media", async (req, res) => {
                 }
 
 // =========================
-// UPDATE FUNCTION (LOG CHUẨN)
-                async function waitUntilVideoCleared(item_id) {
+// UPDATE VIDEO FUNCTION
+// =========================
+async function updateVideo() {
 
-                    for (let i = 0; i < 10; i++) {
+    const updatePath = "/api/v2/product/update_item"
+    const tsUpdate = Math.floor(Date.now() / 1000)
 
-                        await sleep(2000)
+    const signUpdate = crypto
+        .createHmac("sha256", partner_key)
+        .update(partner_id + updatePath + tsUpdate + access_token + shop_id)
+        .digest("hex")
 
-                        const path = "/api/v2/product/get_item_base_info"
-                        const ts = Math.floor(Date.now() / 1000)
+    const updateUrl =
+        `https://partner.shopeemobile.com${updatePath}` +
+                    `?partner_id=${partner_id}` +
+                    `&timestamp=${tsUpdate}` +
+                    `&access_token=${access_token}` +
+                    `&shop_id=${shop_id}` +
+                    `&sign=${signUpdate}`
 
-                        const sign = crypto
-                            .createHmac("sha256", partner_key)
-                            .update(partner_id + path + ts + access_token + shop_id)
-                            .digest("hex")
-
-                        const res = await axios.get(
-                            `https://partner.shopeemobile.com${path}`,
-                            {
-                                params: {
-                                    partner_id,
-                                    timestamp: ts,
-                                    access_token,
-                                    shop_id,
-                                    sign,
-                                    item_id_list: String(item_id),
-                                    response_optional_fields: "video_info"
-                                }
-                            }
-                        )
-
-                        const video = res.data?.response?.item_list?.[0]?.video_info
-
-                        console.log("🔍 CHECK CLEAR:", video)
-
-                        if (!video || video.length === 0) {
-                            console.log("✅ VIDEO CLEARED CONFIRMED")
-                            return
+                const requestBody = {
+                    item_id: item.item_id,
+                    video_info: [
+                        {
+                            video_upload_id: video_upload_id
                         }
-                    }
-
-                    throw new Error("❌ CLEAR VIDEO TIMEOUT")
+                    ]
                 }
-// =========================
-                async function updateVideo() {
-                    // ===== UPDATE VIDEO (REPLACE DIRECT) =====
-                    const updatePath = "/api/v2/product/update_item"
-                    const tsUpdate = Math.floor(Date.now() / 1000)
 
-                    const signUpdate = crypto
-                        .createHmac("sha256", partner_key)
-                        .update(partner_id + updatePath + tsUpdate + access_token + shop_id)
-                        .digest("hex")
+                // =========================
+                // LOG REQUEST
+                // =========================
+                console.log("\n================ UPDATE_ITEM REQUEST ================")
+                console.log("TIME:", new Date().toISOString())
+                console.log("API: v2.product.update_item")
+                console.log("URL:", updateUrl)
 
-                    const updateUrl = `https://partner.shopeemobile.com${updatePath}?partner_id=${partner_id}&timestamp=${tsUpdate}&access_token=${access_token}&shop_id=${shop_id}&sign=${signUpdate}`
+                console.log("\nREQUEST BODY:")
+                console.log(JSON.stringify(requestBody, null, 2))
 
-                    console.log("🚀 UPDATE VIDEO:", item.item_id, video_upload_id)
+                const curl = `
+curl --location '${updateUrl}' \\
+--header 'Content-Type: application/json' \\
+--data '${JSON.stringify(requestBody)}'
+`
 
-                    const updateRes = await axios.post(updateUrl, {
-                        item_id: item.item_id,
-                        video_info: [
-                            {
-                                video_upload_id: video_upload_id // 👈 VIDEO MỚI
-                            }
-                        ]
-                    }, {
+                console.log("\nCURL:")
+                console.log(curl)
+
+                // =========================
+                // API CALL
+                // =========================
+                const updateRes = await axios.post(
+                    updateUrl,
+                    requestBody,
+                    {
+                        headers: {
+                            "Content-Type": "application/json"
+                        },
                         timeout: 20000
-                    })
-
-                    console.log("✅ UPDATE DONE:", updateRes.data)
-                }
-
-// =========================
-// CHECK ITEM FUNCTION
-// =========================
-                async function checkItem() {
-
-                    const path = "/api/v2/product/get_item_base_info"
-                    const ts = Math.floor(Date.now() / 1000)
-
-                    const signCheck = crypto
-                        .createHmac("sha256", partner_key)
-                        .update(partner_id + path + ts + access_token + shop_id)
-                        .digest("hex")
-
-                    const url = `https://partner.shopeemobile.com${path}`
-
-                    const params = {
-                        partner_id,
-                        timestamp: ts,
-                        access_token,
-                        shop_id,
-                        sign: signCheck,
-                        item_id_list: String(item.item_id),
-                        response_optional_fields: "video_info"
                     }
+                )
 
-                    console.log("========== 🟡 GET_ITEM_BASE REQUEST ==========")
-                    console.log("Time:", new Date().toISOString())
-                    console.log("Request URL:", url)
-                    console.log("Params:", JSON.stringify(params, null, 2))
+                // =========================
+                // LOG RESPONSE
+                // =========================
+                console.log("\n================ UPDATE_ITEM RESPONSE ================")
+                console.log("TIME:", new Date().toISOString())
 
-                    const res = await axios.get(url, { params })
+                console.log("\nRESPONSE BODY:")
+                console.log(JSON.stringify(updateRes.data, null, 2))
 
-                    console.log("========== 🟢 GET_ITEM_BASE RESPONSE ==========")
-                    console.log(JSON.stringify(res.data, null, 2))
+                return updateRes.data
+            }
 
-                    return res.data
+// =========================
+// GET ITEM BASE INFO
+// =========================
+            async function checkItem() {
+
+                const path = "/api/v2/product/get_item_base_info"
+                const ts = Math.floor(Date.now() / 1000)
+
+                const signCheck = crypto
+                    .createHmac("sha256", partner_key)
+                    .update(partner_id + path + ts + access_token + shop_id)
+                    .digest("hex")
+
+                const url = `https://partner.shopeemobile.com${path}`
+
+                const params = {
+                    partner_id,
+                    timestamp: ts,
+                    access_token,
+                    shop_id,
+                    sign: signCheck,
+                    item_id_list: String(item.item_id),
+                    response_optional_fields: "video_info"
                 }
 
-// =========================
-// RUN UPDATE + CHECK
-// =========================
+                // build query string
+                const query = new URLSearchParams(params).toString()
+
+                const fullUrl = `${url}?${query}`
+
+                // =========================
+                // LOG REQUEST
+                // =========================
+                console.log("\n================ GET_ITEM_BASE_INFO REQUEST ================")
+                console.log("TIME:", new Date().toISOString())
+                console.log("API: v2.product.get_item_base_info")
+                console.log("URL:", fullUrl)
+
+                const curl = `
+curl --location '${fullUrl}'
+`
+
+                console.log("\nCURL:")
+                console.log(curl)
+
+                // =========================
+                // API CALL
+                // =========================
+                const res = await axios.get(url, { params })
+
+                // =========================
+                // LOG RESPONSE
+                // =========================
+                console.log("\n================ GET_ITEM_BASE_INFO RESPONSE ================")
+                console.log("TIME:", new Date().toISOString())
+
+                console.log("\nRESPONSE BODY:")
+                console.log(JSON.stringify(res.data, null, 2))
+
+                return res.data
+            }
+
+
+
                 await updateVideo()
 
-// 🔥 chờ Shopee attach video
                 await sleep(8000)
 
                 const itemData = await checkItem()
