@@ -807,6 +807,12 @@ app.get("/download_json", (req, res) => {
         res.json({ error: e.message })
     }
 })
+function vnTime() {
+    return new Date().toLocaleString("vi-VN", {
+        timeZone: "Asia/Ho_Chi_Minh",
+        hour12: false
+    })
+}
 function shopeeLog(title, data) {
     console.log("\n")
     console.log("==================================================")
@@ -1122,7 +1128,7 @@ curl --location '${updateUrl}' \\
 
                     // ===== REQUEST LOG =====
                     shopeeLog("UPDATE_ITEM REQUEST", {
-                        time: new Date().toISOString(),
+                        time: vnTime(),
                         api: "v2.product.update_item",
                         curl,
                         request_body: requestBody
@@ -1140,7 +1146,7 @@ curl --location '${updateUrl}' \\
 
                     // ===== RESPONSE LOG =====
                     shopeeLog("UPDATE_ITEM RESPONSE", {
-                        time: new Date().toISOString(),
+                        time: vnTime(),
                         response_body: updateRes.data
                     })
 
