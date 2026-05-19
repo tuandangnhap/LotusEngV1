@@ -57,7 +57,6 @@ function trimVideo(inputPath, outputPath) {
             ])
 
             .on("end", () => {
-                console.log("✅ Encode done")
                 resolve(outputPath)
             })
 
@@ -515,7 +514,7 @@ app.get("/get_items", async (req, res) => {
                     sign: signature,
                     offset,
                     page_size,
-                    item_status: "NORMAL"
+                    item_status: "BANNED"
                 }
             }
         )
@@ -838,8 +837,6 @@ app.post("/update_item_media", async (req, res) => {
 
             try {
 
-                console.log("🚀 Processing:", item.item_id)
-
                 if (!item.video_url) {
                     console.log("⚠️ No video, skip")
                     continue
@@ -872,11 +869,9 @@ app.post("/update_item_media", async (req, res) => {
 // CHECK FILE SIZE (quick rule)
 // =========================
                 const stat = fs.statSync(tempInput)
-                console.log("📦 File size:", stat.size)
 
 // 👉 nếu >60s thường size > ~10MB → cắt luôn cho chắc
                 const duration = await getDuration(tempInput)
-                console.log("⏱ Duration:", duration)
 
                 if (duration > 58) {
                     console.log("✂️ Trim to 55s...")
@@ -998,8 +993,6 @@ app.post("/update_item_media", async (req, res) => {
                         }
                     )
 
-                    console.log(`⬆️ part ${part_seq}`, uploadRes.data)
-
                     if (uploadRes.data.error) {
                         throw new Error(uploadRes.data.message)
                     }
@@ -1033,8 +1026,6 @@ app.post("/update_item_media", async (req, res) => {
                         params: { partner_id, timestamp: ts3, access_token, shop_id, sign: sign3 }
                     }
                 )
-
-                console.log("📦 Complete done")
 
                 // =========================
 // 5. WAIT RESULT
@@ -1082,7 +1073,6 @@ app.post("/update_item_media", async (req, res) => {
 
                     // 🔥 CHỈ OK KHI CÓ URL
                     if (status === "SUCCEEDED") {
-                        console.log("🎯 VIDEO READY (HAS URL)")
                         videoReady = true
                         finalUrls = urls
                         break
