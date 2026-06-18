@@ -125,6 +125,9 @@
         <button id="downloadItems">Download list item</button>
         <button id="downloadMedia">Download Video Image</button>
         <button onclick="saveJson()">Save JSON</button>
+        <button onclick="downloadStock()">
+            Download Stock
+        </button>
     </div>
 
     <div id="progressBox">
@@ -156,6 +159,9 @@
     }
     function saveJson() {
         window.open("/download_json")
+    }
+    function downloadStock() {
+        window.open("/download_stock")
     }
     document.getElementById("downloadItems").onclick = async () => {
 
@@ -268,6 +274,30 @@
         if (!files.length) return
 
         try {
+            if(updateMode === "stock"){
+
+                const file = files[0]
+
+                const form = new FormData()
+                form.append("file", file)
+
+                log("Đang lấy tồn kho...")
+
+                const res = await fetch("/ton_kho",{
+                    method:"POST",
+                    body:form
+                })
+
+                const data = await res.json()
+
+                log(JSON.stringify(data,null,2))
+
+                log("✅ Hoàn tất")
+                log("Nhấn Download Stock để tải file")
+
+                updateMode = false
+                return
+            }
 
             // ===== MODE UPDATE ITEM (multi file) =====
             if (updateMode === "item") {
@@ -375,6 +405,13 @@
                 log("Opening Shopee authorization...")
                 window.open("/connect")
 
+            }
+            else if(command==="ton_kho"){
+
+                log("Upload JSON file chứa item_id...")
+                updateMode = "stock"
+
+                document.getElementById("jsonFile").click()
             }
             else if(command==="update_item"){
                 log("Upload JSON file (update image + video)...")

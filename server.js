@@ -727,6 +727,106 @@ app.post("/upload_image", upload.single("image"), async (req, res) => {
     }
 })
 
+app.post("/ton_kho", upload.single("file"), async (req, res) => {
+
+    try {
+
+        const raw = fs.readFileSync(req.file.path)
+        const item_ids = JSON.parse(raw)
+
+        const pathApi = "/api/v2/product/get_item_base_info"
+
+        const resultJson = []
+
+        const chunks = chunkArray(item_ids, 50)
+
+        for (const chunk of chunks) {
+
+            const timestamp = Math.floor(Date.now() / 1000)
+
+            const sign = crypto
+                .createHmac("sha256", partner_key)
+                .update(
+                    partner_id +
+                    pathApi +
+                    timestamp +
+                    access_token +
+                    shop_id
+                )
+                .digest("hex")
+
+            const result = await axios.get(
+                `https://partner.shopeemobile.com${pathApi}`,
+                {
+                    params: {
+                        partner_id,
+                        shop_id,
+                        access_token,
+                        timestamp,
+                        sign,
+                        item_id_list: chunk.join(","),
+                        response_optional_fields: "stock_info_v2"
+                    }
+                }
+            )
+
+            const items =
+                result.data?.response?.item_list || []
+
+            items.forEach(item => {
+
+                resultJson.push({
+                    item_id: item.item_id,
+                    stock:
+                        item.stock_info_v2
+                            ?.summary_info
+                            ?.total_available_stock || 0
+                })
+
+            })
+        }
+
+        fs.writeFileSync(
+            "stock.json",
+            JSON.stringify(resultJson, null, 2)
+        )
+
+        res.json({
+            success: true,
+            total: resultJson.length
+        })
+
+    } catch (e) {
+
+        res.json({
+            success: false,
+            error: e.message
+        })
+
+    }
+
+})
+
+app.get("/download_stock", (req, res) => {
+
+    const file = path.join(
+        __dirname,
+        "stock.json"
+    )
+
+    if (!fs.existsSync(file)) {
+        return res.json({
+            error: "No stock data"
+        })
+    }
+
+    res.download(
+        file,
+        "stock.json"
+    )
+
+})
+
 app.post("/update_items_image", async (req, res) => {
     try {
 
