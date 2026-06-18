@@ -514,7 +514,7 @@ app.get("/get_items", async (req, res) => {
                     sign: signature,
                     offset,
                     page_size,
-                    item_status: "BANNED"
+                    item_status: "NORMAL"
                 }
             }
         )
