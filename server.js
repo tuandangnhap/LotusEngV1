@@ -536,54 +536,54 @@ app.get("/get_items", async (req, res) => {
 
 app.post("/show_item", upload.single("file"), async (req, res) => {
 
-    try{
+    try {
 
-        const raw = fs.readFileSync(req.file.path)
+        const raw = fs.readFileSync(req.file.path, "utf8")
 
         let item_ids = JSON.parse(raw)
 
-        // hỗ trợ cả:
-        // [123,456]
-        // ["123","456"]
-        // [{"123","456"}]
-        if(Array.isArray(item_ids) && item_ids.length===1 && Array.isArray(item_ids[0])){
-            item_ids=item_ids[0]
-        }
+        item_ids = item_ids.map(i => Number(i))
 
-        item_ids=item_ids.map(i=>Number(i))
+        const chunks = chunkArray(item_ids, 50)
 
-        const chunks=chunkArray(item_ids,50)
+        const apiPath = "/api/v2/product/unlist_item"
 
-        const apiPath="/api/v2/product/unlist_item"
+        let success = 0
+        let fail = 0
+        const results = []
 
-        let success=0
-        let fail=0
+        for (const chunk of chunks) {
 
-        for(const chunk of chunks){
+            const timestamp = Math.floor(Date.now() / 1000)
 
-            const timestamp=Math.floor(Date.now()/1000)
-
-            const sign=crypto
-                .createHmac("sha256",partner_key)
+            const sign = crypto
+                .createHmac("sha256", partner_key)
                 .update(
-                    partner_id+
-                    apiPath+
-                    timestamp+
-                    access_token+
+                    partner_id +
+                    apiPath +
+                    timestamp +
+                    access_token +
                     shop_id
                 )
                 .digest("hex")
 
-            try{
+            const body = {
+                item_list: chunk.map(id => ({
+                    item_id: id,
+                    unlist: false
+                }))
+            }
 
-                await axios.post(
+            try {
+
+                console.log("============== REQUEST ==============")
+                console.log(JSON.stringify(body, null, 2))
+
+                const result = await axios.post(
                     `https://partner.shopeemobile.com${apiPath}`,
+                    body,
                     {
-                        item_id_list:chunk,
-                        unlist:false
-                    },
-                    {
-                        params:{
+                        params: {
                             partner_id,
                             shop_id,
                             access_token,
@@ -593,32 +593,54 @@ app.post("/show_item", upload.single("file"), async (req, res) => {
                     }
                 )
 
-                success+=chunk.length
+                console.log("============== RESPONSE ==============")
+                console.log(JSON.stringify(result.data, null, 2))
 
-            }catch(e){
+                results.push(result.data)
 
-                console.log(e.response?.data||e.message)
+                // Nếu Shopee trả về lỗi
+                if (result.data.error && result.data.error !== "") {
 
-                fail+=chunk.length
+                    fail += chunk.length
+
+                } else {
+
+                    success += chunk.length
+
+                }
+
+            } catch (e) {
+
+                console.log("============== ERROR ==============")
+                console.log(JSON.stringify(e.response?.data || e.message, null, 2))
+
+                results.push(e.response?.data || e.message)
+
+                fail += chunk.length
 
             }
 
         }
 
-        fs.unlinkSync(req.file.path)
+        if (fs.existsSync(req.file.path)) {
+            fs.unlinkSync(req.file.path)
+        }
 
         res.json({
-            success:true,
-            total:item_ids.length,
-            success_count:success,
-            fail_count:fail
+            success: fail === 0,
+            total: item_ids.length,
+            success_count: success,
+            fail_count: fail,
+            result: results
         })
 
-    }catch(e){
+    } catch (e) {
+
+        console.log(e)
 
         res.json({
-            success:false,
-            error:e.response?.data||e.message
+            success: false,
+            error: e.response?.data || e.message
         })
 
     }
