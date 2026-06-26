@@ -514,7 +514,7 @@ app.get("/get_items", async (req, res) => {
                     sign: signature,
                     offset,
                     page_size,
-                    item_status: "NORMAL"
+                    item_status: "UNLIST"
                 }
             }
         )
