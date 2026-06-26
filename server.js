@@ -674,7 +674,7 @@ app.post("/get_item_base", upload.single("file"), async (req, res) => {
                             timestamp,
                             sign,
                             item_id_list: chunk.join(","),
-                            response_optional_fields: "description,description_info,weight,dimension,price_info"
+                            response_optional_fields: "description,description_info,weight,dimension,price_info,item_status"
                         }
                     }
                 )
@@ -700,6 +700,11 @@ app.post("/get_item_base", upload.single("file"), async (req, res) => {
                 )
 
                 const items = result.data?.response?.item_list || []
+                items.forEach(item => {
+                    console.log(
+                        `Item ${item.item_id} -> item_status = ${item.item_status}`
+                    )
+                })
                 const extraItems = extra.data?.response?.item_list || []
                 const fetched_ids = items.map(i => String(i.item_id))
 
