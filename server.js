@@ -534,6 +534,97 @@ app.get("/get_items", async (req, res) => {
     res.json(item_ids)
 })
 
+app.post("/show_item", upload.single("file"), async (req, res) => {
+
+    try{
+
+        const raw = fs.readFileSync(req.file.path)
+
+        let item_ids = JSON.parse(raw)
+
+        // hỗ trợ cả:
+        // [123,456]
+        // ["123","456"]
+        // [{"123","456"}]
+        if(Array.isArray(item_ids) && item_ids.length===1 && Array.isArray(item_ids[0])){
+            item_ids=item_ids[0]
+        }
+
+        item_ids=item_ids.map(i=>Number(i))
+
+        const chunks=chunkArray(item_ids,50)
+
+        const apiPath="/api/v2/product/unlist_item"
+
+        let success=0
+        let fail=0
+
+        for(const chunk of chunks){
+
+            const timestamp=Math.floor(Date.now()/1000)
+
+            const sign=crypto
+                .createHmac("sha256",partner_key)
+                .update(
+                    partner_id+
+                    apiPath+
+                    timestamp+
+                    access_token+
+                    shop_id
+                )
+                .digest("hex")
+
+            try{
+
+                await axios.post(
+                    `https://partner.shopeemobile.com${apiPath}`,
+                    {
+                        item_id_list:chunk,
+                        unlist:false
+                    },
+                    {
+                        params:{
+                            partner_id,
+                            shop_id,
+                            access_token,
+                            timestamp,
+                            sign
+                        }
+                    }
+                )
+
+                success+=chunk.length
+
+            }catch(e){
+
+                console.log(e.response?.data||e.message)
+
+                fail+=chunk.length
+
+            }
+
+        }
+
+        fs.unlinkSync(req.file.path)
+
+        res.json({
+            success:true,
+            total:item_ids.length,
+            success_count:success,
+            fail_count:fail
+        })
+
+    }catch(e){
+
+        res.json({
+            success:false,
+            error:e.response?.data||e.message
+        })
+
+    }
+
+})
+
 /* ================== GET ITEM BASE OPTIMIZED ================== */
 
 app.post("/get_item_base", upload.single("file"), async (req, res) => {

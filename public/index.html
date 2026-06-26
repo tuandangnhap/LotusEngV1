@@ -331,6 +331,28 @@
                 return
             }
 
+            if(updateMode==="show"){
+
+                const file = files[0]
+
+                const form = new FormData()
+                form.append("file",file)
+
+                log("Đang chuyển sản phẩm sang trạng thái hiển thị...")
+
+                const res = await fetch("/show_item",{
+                    method:"POST",
+                    body:form
+                })
+
+                const data = await res.json()
+
+                log(JSON.stringify(data,null,2))
+
+                updateMode=false
+                return
+            }
+
             // ===== MODE CŨ: get_item_base =====
             const file = files[0]
             const form = new FormData()
@@ -412,6 +434,14 @@
                 updateMode = "stock"
 
                 document.getElementById("jsonFile").click()
+            }
+            else if(command==="show_item"){
+
+                log("Upload JSON file chứa item_id...")
+                updateMode = "show"
+
+                document.getElementById("jsonFile").click()
+
             }
             else if(command==="update_item"){
                 log("Upload JSON file (update image + video)...")
